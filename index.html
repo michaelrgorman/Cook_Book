@@ -127,14 +127,25 @@
     background: var(--card); border-radius:16px;
   }
 
-  /* ---------- Shelf chips (Books tab) ---------- */
-  .chip-scroll{ display:flex; gap:8px; overflow-x:auto; padding: 2px 2px 12px; -webkit-overflow-scrolling: touch; }
-  .chip-scroll::-webkit-scrollbar{ display:none; }
-  .chip{
-    flex-shrink:0; padding: 9px 16px; border-radius: 30px; font-size:13px; font-weight:600;
-    border: 2.5px solid var(--ink); background: var(--card); white-space:nowrap;
+  /* ---------- Book grid (Books tab) ---------- */
+  .book-grid{ display:grid; grid-template-columns: repeat(2,1fr); gap:12px; margin-bottom: 6px; }
+  .book-tile{
+    border-radius:18px; padding:16px; min-height:118px; color:#fff;
+    border: var(--line) solid var(--ink); box-shadow: 5px 5px 0 var(--ink);
+    display:flex; flex-direction:column; justify-content:space-between;
   }
-  .chip.active{ background: var(--ink); color: var(--cream); }
+  .book-tile-title{ font-weight:700; font-size:15px; line-height:1.25; }
+  .book-tile-sub{ font-family:'Space Mono', monospace; font-size:10px; opacity:0.9; margin-top:4px; }
+  .book-tile-count{
+    font-family:'Space Mono', monospace; font-size:10px; margin-top:10px; align-self:flex-start;
+    background: rgba(0,0,0,0.22); padding:3px 9px; border-radius:10px;
+  }
+  .book-tile.add-tile{
+    background: var(--card); color: var(--ink); align-items:center; justify-content:center;
+    text-align:center; font-weight:600; font-size:14px; border-style:dashed; box-shadow:none;
+  }
+  .back-btn{ margin-bottom:12px; }
+  .card-tags{ font-family:'Space Mono', monospace; font-size:10.5px; color:#999; margin-top:3px; }
 
   .fab-row{ display:flex; gap:8px; margin-bottom:14px; }
 
@@ -275,17 +286,19 @@
 
 <!-- BOOKS -->
 <div class="page" id="page-books">
-  <div class="section-title" style="margin-top:0;">Your shelf</div>
-  <div class="chip-scroll" id="shelfChips"></div>
-
-  <div class="fab-row">
-    <button class="btn yellow small pop-sm pressable" onclick="openBookModal()">+ Cookbook</button>
-    <button class="btn pink small pop-sm pressable" onclick="openRecipeModal()">+ Recipe</button>
+  <div id="booksGridWrap">
+    <div class="section-title" style="margin-top:0;">Your shelf</div>
+    <div class="book-grid" id="bookGrid"></div>
   </div>
 
-  <div id="booksMainHead"></div>
-  <div class="cards" id="cardsWrap"></div>
-  <div class="empty-msg" id="emptyState" style="display:none;">nothing here yet — add a recipe!</div>
+  <div id="booksDetailWrap" style="display:none;">
+    <div id="booksMainHead"></div>
+    <div class="fab-row">
+      <button class="btn pink small pop-sm pressable" onclick="openRecipeModal()">+ Recipe</button>
+    </div>
+    <div class="cards" id="cardsWrap"></div>
+    <div class="empty-msg" id="emptyState" style="display:none;">nothing here yet — add a recipe!</div>
+  </div>
 </div>
 
 <!-- COOKED -->
@@ -330,6 +343,7 @@
     <div class="field"><label>recipe name</label><input type="text" id="recipeName"></div>
     <div class="field"><label>cookbook</label><select id="recipeBook"></select></div>
     <div class="field"><label>page</label><input type="text" id="recipePage" placeholder="e.g. 42"></div>
+    <div class="field"><label>tags / keywords (comma separated)</label><input type="text" id="recipeTags" placeholder="e.g. pasta, quick, spicy"></div>
     <div class="modal-actions">
       <button class="btn" onclick="closeModal('recipeOverlay')">Cancel</button>
       <button class="btn pink" onclick="saveRecipe()">Save</button>
@@ -488,35 +502,51 @@
 
   // ---------------- BOOKS TAB ----------------
   function renderBooksTab(){
-    const chipsWrap = document.getElementById('shelfChips');
-    let chipsHtml = `<button class="chip ${currentISBN==='all'?'active':''}" onclick="selectBook('all')">All books</button>`;
-    chipsHtml += books.map(b => `<button class="chip ${String(currentISBN)===String(b.ISBN)?'active':''}" onclick="selectBook('${b.ISBN}')">${escapeHtml(b.Title)}</button>`).join('');
-    chipsWrap.innerHTML = chipsHtml;
+    const showGrid = !searchTerm.trim() && currentISBN === 'all';
+    document.getElementById('booksGridWrap').style.display = showGrid ? 'block' : 'none';
+    document.getElementById('booksDetailWrap').style.display = showGrid ? 'none' : 'block';
+
+    if(showGrid){
+      renderBookGrid();
+      return;
+    }
 
     const head = document.getElementById('booksMainHead');
-    if(currentISBN !== 'all'){
-      const book = bookById(currentISBN);
-      head.innerHTML = book ? `
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
-          <div>
-            <h2 style="font-size:20px;">${escapeHtml(book.Title)}</h2>
-            <div class="mono" style="font-size:11.5px; color:#777; margin-top:2px;">${escapeHtml(book.Author||'')}${book.Location ? ' · '+escapeHtml(book.Location) : ''}</div>
-          </div>
-          <div style="display:flex; gap:6px; flex-shrink:0;">
-            <button class="btn small" onclick="openBookModal('${book.ISBN}')">Edit</button>
-            <button class="btn small danger" onclick="deleteBook('${book.ISBN}')">Delete</button>
-          </div>
+    if(searchTerm.trim()){
+      head.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h2 style="font-size:19px;">Search results</h2>
+          <button class="btn small" onclick="clearSearch()">✕ clear</button>
         </div>
-      ` : '';
+      `;
     } else {
-      head.innerHTML = '';
+      const book = bookById(currentISBN);
+      head.innerHTML = `
+        <button class="btn small back-btn" onclick="selectBook('all')">‹ All books</button>
+        ${book ? `
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+            <div>
+              <h2 style="font-size:20px;">${escapeHtml(book.Title)}</h2>
+              <div class="mono" style="font-size:11.5px; color:#777; margin-top:2px;">${escapeHtml(book.Author||'')}${book.Location ? ' · '+escapeHtml(book.Location) : ''}</div>
+            </div>
+            <div style="display:flex; gap:6px; flex-shrink:0;">
+              <button class="btn small" onclick="openBookModal('${book.ISBN}')">Edit</button>
+              <button class="btn small danger" onclick="deleteBook('${book.ISBN}')">Delete</button>
+            </div>
+          </div>
+        ` : ''}
+      `;
     }
 
     let list = recipes;
-    if(currentISBN !== 'all') list = list.filter(r => String(r.ISBN) === String(currentISBN));
+    if(!searchTerm.trim() && currentISBN !== 'all') list = list.filter(r => String(r.ISBN) === String(currentISBN));
     if(searchTerm.trim()){
       const q = searchTerm.trim().toLowerCase();
-      list = list.filter(r => (r.RecipeName||'').toLowerCase().includes(q) || String(r.Page||'').toLowerCase().includes(q));
+      list = list.filter(r =>
+        (r.RecipeName||'').toLowerCase().includes(q) ||
+        String(r.Page||'').toLowerCase().includes(q) ||
+        (r.Tags||'').toLowerCase().includes(q)
+      );
     }
 
     const wrap = document.getElementById('cardsWrap');
@@ -525,6 +555,7 @@
     if(list.length === 0){ empty.style.display = 'block'; return; }
     empty.style.display = 'none';
 
+    const showBookTag = searchTerm.trim() || currentISBN === 'all';
     list.forEach(recipe => {
       const book = bookById(recipe.ISBN);
       const cooked = cookedByRecipe[recipe.RecipeID] || [];
@@ -537,7 +568,8 @@
         <div class="card-row" onclick="toggleExpand(${recipe.RecipeID})">
           <div class="card-title">
             <span class="name">${escapeHtml(recipe.RecipeName || '(untitled)')}</span>
-            ${currentISBN==='all' && book ? `<span class="book-tag">${escapeHtml(book.Title)}</span>` : ''}
+            ${showBookTag && book ? `<span class="book-tag">${escapeHtml(book.Title)}</span>` : ''}
+            ${recipe.Tags ? `<div class="card-tags">${escapeHtml(recipe.Tags)}</div>` : ''}
           </div>
           <div class="card-right">
             ${cooked.length ? `<span class="mono" style="font-size:11px; color:#777;">🔥${cooked.length} · ${avgRating}</span>` : ''}
@@ -550,6 +582,29 @@
       wrap.appendChild(card);
       if(expandedRecipe === recipe.RecipeID) renderCardBody(recipe.RecipeID);
     });
+  }
+
+  function renderBookGrid(){
+    const wrap = document.getElementById('bookGrid');
+    wrap.innerHTML = books.map((b,i) => {
+      const count = recipes.filter(r => String(r.ISBN) === String(b.ISBN)).length;
+      const color = PALETTE[i % PALETTE.length];
+      return `
+        <div class="book-tile pressable" style="background:${color};" onclick="selectBook('${b.ISBN}')">
+          <div>
+            <div class="book-tile-title">${escapeHtml(b.Title)}</div>
+            <div class="book-tile-sub">${escapeHtml(b.Author||'')}</div>
+          </div>
+          <div class="book-tile-count">${count} recipe${count===1?'':'s'}</div>
+        </div>
+      `;
+    }).join('') + `<div class="book-tile add-tile pressable" onclick="openBookModal()">+ Add<br>cookbook</div>`;
+  }
+
+  function clearSearch(){
+    searchTerm = '';
+    document.getElementById('searchInput').value = '';
+    renderBooksTab();
   }
 
   function selectBook(isbn){ currentISBN = isbn; expandedRecipe = null; renderBooksTab(); }
@@ -712,6 +767,7 @@
     document.getElementById('recipeOriginalID').value = recipeId || '';
     document.getElementById('recipeName').value = recipe ? recipe.RecipeName || '' : '';
     document.getElementById('recipePage').value = recipe ? recipe.Page || '' : '';
+    document.getElementById('recipeTags').value = recipe ? recipe.Tags || '' : '';
     const select = document.getElementById('recipeBook');
     select.innerHTML = books.map(b => `<option value="${b.ISBN}">${escapeHtml(b.Title)}</option>`).join('');
     const preselect = recipe ? recipe.ISBN : (currentISBN !== 'all' ? currentISBN : (books[0]?.ISBN));
@@ -724,12 +780,13 @@
     const name = document.getElementById('recipeName').value.trim();
     const isbn = document.getElementById('recipeBook').value;
     const page = document.getElementById('recipePage').value.trim();
+    const tags = document.getElementById('recipeTags').value.trim();
     if(!name || !isbn){ toast('Recipe name and cookbook are required.', true); return; }
     let error;
     if(original){
-      ({error} = await sb.from(T_RECIPE).update({RecipeName:name, ISBN:isbn, Page:page || null}).eq('RecipeID', original));
+      ({error} = await sb.from(T_RECIPE).update({RecipeName:name, ISBN:isbn, Page:page || null, Tags: tags || null}).eq('RecipeID', original));
     } else {
-      ({error} = await sb.from(T_RECIPE).insert({RecipeName:name, ISBN:isbn, Page:page || null}));
+      ({error} = await sb.from(T_RECIPE).insert({RecipeName:name, ISBN:isbn, Page:page || null, Tags: tags || null}));
     }
     if(error){ toast('Could not save recipe: ' + error.message, true); return; }
     closeModal('recipeOverlay');
