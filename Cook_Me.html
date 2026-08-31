@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Cook This!</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --yellow:#FFC93C;
+    --pink:#FF4D8D;
+    --blue:#3A7BFF;
+    --green:#33B27A;
+    --orange:#FF7A33;
+    --purple:#8C6BF2;
+    --ink:#161616;
+    --cream:#FFF6E9;
+    --card:#FFFFFF;
+    --line:3px;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background: var(--cream);
+    color: var(--ink);
+    font-family:'Fredoka', sans-serif;
+    padding-bottom: 84px;
+    min-height:100vh;
+  }
+  .mono{ font-family:'Space Mono', monospace; }
+  h1,h2,h3{ font-family:'Fredoka', sans-serif; margin:0; }
+  button{ font-family:'Fredoka', sans-serif; }
+
+  .hardline{ border: var(--line) solid var(--ink); }
+  .pop{ box-shadow: 5px 5px 0 var(--ink); }
+  .pop-sm{ box-shadow: 3px 3px 0 var(--ink); }
+  .pressable{ transition: transform 0.08s ease, box-shadow 0.08s ease; cursor:pointer; }
+  .pressable:active{ transform: translate(3px,3px); box-shadow: 2px 2px 0 var(--ink) !important; }
+
+  /* ---------- Top bar ---------- */
+  .topbar{
+    background: var(--ink);
+    color: var(--cream);
+    padding: 16px 18px 20px;
+    border-bottom: var(--line) solid var(--ink);
+    position: sticky; top:0; z-index: 30;
+  }
+  .topbar-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .logo{ display:flex; align-items:center; gap:10px; }
+  .logo .blob{
+    width:38px; height:38px; border-radius: 40% 60% 55% 45% / 50% 45% 55% 50%;
+    background: var(--yellow); border: 2.5px solid var(--cream);
+    display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;
+  }
+  .logo h1{ font-size: 22px; font-weight:700; letter-spacing:-0.01em; color: var(--cream); }
+  .search-toggle{
+    width:40px; height:40px; border-radius:50%; background: var(--pink);
+    border: 2.5px solid var(--cream); color:var(--cream); font-size:16px;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  }
+  .search-bar{ display:none; margin-top:14px; }
+  .search-bar.open{ display:block; }
+  .search-bar input{
+    width:100%; padding: 12px 14px; border-radius: 14px; border: 2.5px solid var(--cream);
+    background: var(--ink); color: var(--cream); font-family:'Space Mono', monospace; font-size:13px;
+  }
+  .search-bar input::placeholder{ color: #b9b9b9; }
+
+  /* ---------- Page container ---------- */
+  .page{ display:none; padding: 18px 16px 20px; max-width: 720px; margin: 0 auto; }
+  .page.active{ display:block; }
+
+  .section-title{ font-size: 20px; font-weight:700; margin: 22px 0 12px; }
+  .section-title:first-child{ margin-top:0; }
+
+  /* ---------- Stat cards (dashboard) ---------- */
+  .stats-row{ display:grid; grid-template-columns: repeat(3,1fr); gap:10px; }
+  .stat-card{
+    background: var(--card); border-radius:16px; padding: 14px 10px; text-align:center;
+  }
+  .stat-card .num{ font-size: 26px; font-weight:700; line-height:1; }
+  .stat-card .label{ font-family:'Space Mono', monospace; font-size:10px; margin-top:6px; color:#444; text-transform:lowercase; }
+  .stat-card.c1{ background: var(--yellow); }
+  .stat-card.c2{ background: var(--pink); color:#fff; }
+  .stat-card.c2 .label{ color:#ffe1ec; }
+  .stat-card.c3{ background: var(--blue); color:#fff; }
+  .stat-card.c3 .label{ color:#dbe8ff; }
+
+  /* ---------- Tonight card ---------- */
+  .tonight-card{
+    background: var(--purple); color:#fff; border-radius:20px; padding:20px; margin-top:16px;
+  }
+  .tonight-card .eyebrow{ font-family:'Space Mono', monospace; font-size:11px; opacity:0.85; }
+  .tonight-card .dish{ font-size: 24px; font-weight:700; margin: 8px 0 4px; }
+  .tonight-card .from{ font-family:'Space Mono', monospace; font-size:12px; opacity:0.9; margin-bottom:14px; }
+  .tonight-empty{ font-size:15px; opacity:0.9; margin-bottom: 6px;}
+
+  .btn{
+    font-family:'Fredoka', sans-serif; font-weight:600; font-size:14px;
+    padding: 11px 18px; border-radius: 30px; border: var(--line) solid var(--ink);
+    background: var(--card); color: var(--ink); display:inline-flex; align-items:center; gap:6px;
+  }
+  .btn.on-dark{ border-color:#fff; background: rgba(255,255,255,0.14); color:#fff; }
+  .btn.yellow{ background: var(--yellow); }
+  .btn.pink{ background: var(--pink); color:#fff; border-color: var(--ink); }
+  .btn.green{ background: var(--green); color:#fff; }
+  .btn.block{ width:100%; justify-content:center; }
+  .btn.small{ padding: 7px 12px; font-size:12.5px; }
+  .btn.danger{ background:#fff; color:#D8425A; border-color:#D8425A; }
+
+  /* ---------- Recently cooked list ---------- */
+  .recent-item{
+    background: var(--card); border-radius: 16px; padding: 12px 14px; margin-bottom:10px;
+    display:flex; justify-content:space-between; align-items:center; gap:10px;
+  }
+  .recent-item .name{ font-weight:600; font-size:15px; }
+  .recent-item .sub{ font-family:'Space Mono', monospace; font-size:11px; color:#666; margin-top:2px; }
+  .rating-chip{
+    background: var(--yellow); border-radius:50%; width:38px; height:38px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; font-family:'Space Mono', monospace; font-weight:700; font-size:13px;
+    border: 2px solid var(--ink);
+  }
+  .empty-msg{
+    font-family:'Space Mono', monospace; font-size:12.5px; color:#777; text-align:center; padding: 24px 10px;
+    background: var(--card); border-radius:16px;
+  }
+
+  /* ---------- Shelf chips (Books tab) ---------- */
+  .chip-scroll{ display:flex; gap:8px; overflow-x:auto; padding: 2px 2px 12px; -webkit-overflow-scrolling: touch; }
+  .chip-scroll::-webkit-scrollbar{ display:none; }
+  .chip{
+    flex-shrink:0; padding: 9px 16px; border-radius: 30px; font-size:13px; font-weight:600;
+    border: 2.5px solid var(--ink); background: var(--card); white-space:nowrap;
+  }
+  .chip.active{ background: var(--ink); color: var(--cream); }
+
+  .fab-row{ display:flex; gap:8px; margin-bottom:14px; }
+
+  /* ---------- Recipe cards ---------- */
+  .cards{ display:flex; flex-direction:column; gap:10px; }
+  .card{ background: var(--card); border-radius:18px; padding: 14px 16px; }
+  .card-row{ display:flex; justify-content:space-between; align-items:center; gap:10px; cursor:pointer; }
+  .card-title .name{ font-weight:600; font-size:16px; }
+  .card-title .book-tag{ display:block; font-family:'Space Mono', monospace; font-size:11px; color:#777; margin-top:2px; }
+  .card-right{ display:flex; align-items:center; gap:8px; flex-shrink:0; }
+  .page-pill{
+    font-family:'Space Mono', monospace; font-size:11.5px; background: var(--green); color:#fff;
+    padding:4px 10px; border-radius:20px; white-space:nowrap;
+  }
+  .page-pill.none{ background:#ccc; color:#555; }
+  .chevron{ font-size:18px; transition: transform 0.15s ease; color:#999; }
+  .card.expanded .chevron{ transform: rotate(90deg); }
+  .card-body{ display:none; margin-top:12px; padding-top:12px; border-top: 2px dashed #eee; }
+  .card.expanded .card-body{ display:block; }
+
+  .cooked-log{ display:flex; flex-direction:column; gap:8px; margin-bottom:10px; }
+  .cooked-entry{
+    display:flex; justify-content:space-between; gap:10px; background: var(--cream);
+    padding: 9px 12px; border-radius:12px;
+  }
+  .cooked-entry .left{ font-size:13px; }
+  .cooked-entry .date{ font-family:'Space Mono', monospace; font-size:10.5px; color:#777; display:block; }
+  .no-log{ font-family:'Space Mono', monospace; font-size:12px; color:#999; margin-bottom:10px; }
+
+  .inline-form{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:10px; }
+  .inline-form input{
+    font-family:'Space Mono', monospace; font-size:12.5px; padding:9px 10px;
+    border-radius:10px; border: 2px solid #e5e0d3; background:#fff;
+  }
+  .again-toggle{ display:flex; gap:6px; }
+  .again-btn{
+    font-family:'Space Mono', monospace; font-size:11.5px; font-weight:700; padding:8px 12px;
+    border-radius:20px; border: 2px solid #e5e0d3; background:#fff; color:#999;
+  }
+  .again-btn.yes.on{ background: var(--green); border-color: var(--ink); color:#fff; }
+  .again-btn.no.on{ background:#D8425A; border-color: var(--ink); color:#fff; }
+  .again-badge{
+    font-family:'Space Mono', monospace; font-size:10.5px; font-weight:700; padding:3px 9px;
+    border-radius:12px; white-space:nowrap;
+  }
+  .again-badge.yes{ background: var(--green); color:#fff; }
+  .again-badge.no{ background:#D8425A; color:#fff; }
+  .row-actions{ display:flex; gap:8px; }
+
+  /* ---------- Cooked tab ---------- */
+  .cooked-full-item{
+    background: var(--card); border-radius:16px; padding:14px 16px; margin-bottom:10px;
+  }
+  .cooked-full-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+  .cooked-full-top .name{ font-weight:600; font-size:15.5px; }
+  .cooked-full-top .book{ font-family:'Space Mono', monospace; font-size:11px; color:#777; }
+  .cooked-full-comment{ font-size:14px; margin-top:8px; color:#333; }
+  .cooked-full-bottom{ display:flex; justify-content:space-between; align-items:center; margin-top:10px; }
+  .cooked-full-bottom .date{ font-family:'Space Mono', monospace; font-size:11px; color:#888; }
+
+  /* ---------- Bottom nav ---------- */
+  .bottomnav{
+    position:fixed; bottom:0; left:0; right:0; background: var(--ink);
+    border-top: var(--line) solid var(--ink); display:flex; z-index:40;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .navbtn{
+    flex:1; background:none; border:none; color:#8b8b8b; padding: 11px 4px 9px;
+    display:flex; flex-direction:column; align-items:center; gap:3px; font-size:11px; font-weight:600;
+  }
+  .navbtn .icon{ font-size:20px; }
+  .navbtn.active{ color: var(--yellow); }
+
+  /* ---------- Modal ---------- */
+  .overlay{ position:fixed; inset:0; background: rgba(22,22,22,0.6); display:none; align-items:flex-end; justify-content:center; z-index:60; }
+  .overlay.open{ display:flex; }
+  .modal{
+    background: var(--cream); border-radius: 24px 24px 0 0; padding: 22px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+    width:100%; max-width: 480px; max-height: 86vh; overflow-y:auto;
+    border-top: var(--line) solid var(--ink);
+  }
+  @media (min-width: 540px){
+    .overlay{ align-items:center; }
+    .modal{ border-radius:24px; border: var(--line) solid var(--ink); }
+  }
+  .modal-handle{ width:40px; height:5px; background:#ddd; border-radius:10px; margin: 0 auto 14px; }
+  .modal h3{ font-size:20px; font-weight:700; margin-bottom:16px; }
+  .field{ margin-bottom:12px; }
+  .field label{ display:block; font-family:'Space Mono', monospace; font-size:10.5px; color:#777; margin-bottom:4px; }
+  .field input, .field select, .field textarea{
+    width:100%; padding:11px 12px; border-radius:12px; border: 2.5px solid var(--ink);
+    font-family:'Fredoka', sans-serif; font-size:15px; background:#fff; color: var(--ink);
+  }
+  .field textarea{ min-height:70px; resize:vertical; }
+  .modal-actions{ display:flex; gap:8px; margin-top:18px; }
+  .modal-actions .btn{ flex:1; }
+
+  .toast{
+    position:fixed; bottom: 94px; left:50%; transform:translateX(-50%);
+    background: var(--ink); color:#fff; font-family:'Space Mono', monospace; font-size:12.5px;
+    padding:12px 18px; border-radius:14px; z-index:100; max-width:90vw; text-align:center;
+  }
+  .toast.error{ background:#D8425A; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-row">
+    <div class="logo">
+      <div class="blob">🍝</div>
+      <h1>Cook This!</h1>
+    </div>
+    <button class="search-toggle" onclick="toggleSearch()">🔍</button>
+  </div>
+  <div class="search-bar" id="searchBar">
+    <input type="text" id="searchInput" placeholder="find a recipe or a page...">
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div class="page active" id="page-dashboard">
+  <div class="stats-row">
+    <div class="stat-card c1"><div class="num" id="statBooks">0</div><div class="label">cookbooks</div></div>
+    <div class="stat-card c2"><div class="num" id="statRecipes">0</div><div class="label">recipes</div></div>
+    <div class="stat-card c3"><div class="num" id="statAvg">–</div><div class="label">avg rating</div></div>
+  </div>
+
+  <div class="tonight-card" id="tonightCard">
+    <div class="eyebrow">// what should i cook tonight?</div>
+    <div id="tonightBody"><div class="tonight-empty">Add a few recipes first!</div></div>
+    <button class="btn on-dark" onclick="rollTonight()">🎲 Roll again</button>
+  </div>
+
+  <div class="section-title">Recently cooked</div>
+  <div id="recentList"></div>
+</div>
+
+<!-- BOOKS -->
+<div class="page" id="page-books">
+  <div class="section-title" style="margin-top:0;">Your shelf</div>
+  <div class="chip-scroll" id="shelfChips"></div>
+
+  <div class="fab-row">
+    <button class="btn yellow small pop-sm pressable" onclick="openBookModal()">+ Cookbook</button>
+    <button class="btn pink small pop-sm pressable" onclick="openRecipeModal()">+ Recipe</button>
+  </div>
+
+  <div id="booksMainHead"></div>
+  <div class="cards" id="cardsWrap"></div>
+  <div class="empty-msg" id="emptyState" style="display:none;">nothing here yet — add a recipe!</div>
+</div>
+
+<!-- COOKED -->
+<div class="page" id="page-cooked">
+  <div class="section-title" style="margin-top:0; display:flex; justify-content:space-between; align-items:center;">
+    <span>Cooked log</span>
+    <button class="btn pink small pop-sm pressable" onclick="openCookedModal()">+ Log a cook</button>
+  </div>
+  <div id="cookedFullList"></div>
+  <div class="empty-msg" id="cookedEmpty" style="display:none;">no meals logged yet — go cook something!</div>
+</div>
+
+<div class="bottomnav">
+  <button class="navbtn active" id="nav-dashboard" onclick="switchTab('dashboard')"><span class="icon">🏠</span>Home</button>
+  <button class="navbtn" id="nav-books" onclick="switchTab('books')"><span class="icon">📚</span>Books</button>
+  <button class="navbtn" id="nav-cooked" onclick="switchTab('cooked')"><span class="icon">🍳</span>Cooked</button>
+</div>
+
+<!-- Book Modal -->
+<div class="overlay" id="bookOverlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3 id="bookModalTitle">Add a cookbook</h3>
+    <input type="hidden" id="bookOriginalISBN">
+    <div class="field"><label>isbn</label><input type="text" id="bookISBN" placeholder="9780091943745"></div>
+    <div class="field"><label>title</label><input type="text" id="bookTitle"></div>
+    <div class="field"><label>author</label><input type="text" id="bookAuthor"></div>
+    <div class="field"><label>location</label><input type="text" id="bookLocation" placeholder="e.g. kitchen shelf"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('bookOverlay')">Cancel</button>
+      <button class="btn pink" onclick="saveBook()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Recipe Modal -->
+<div class="overlay" id="recipeOverlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3 id="recipeModalTitle">Add a recipe</h3>
+    <input type="hidden" id="recipeOriginalID">
+    <div class="field"><label>recipe name</label><input type="text" id="recipeName"></div>
+    <div class="field"><label>cookbook</label><select id="recipeBook"></select></div>
+    <div class="field"><label>page</label><input type="text" id="recipePage" placeholder="e.g. 42"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('recipeOverlay')">Cancel</button>
+      <button class="btn pink" onclick="saveRecipe()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Cooked Modal (standalone log entry) -->
+<div class="overlay" id="cookedOverlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3>Log a cook</h3>
+    <div class="field"><label>recipe</label><select id="cookedRecipeSelect"></select></div>
+    <div class="field"><label>date cooked</label><input type="date" id="cookedDate"></div>
+    <div class="field"><label>rating (0–10)</label><input type="number" step="0.1" min="0" max="10" id="cookedRating"></div>
+    <div class="field"><label>comments</label><textarea id="cookedComments"></textarea></div>
+    <div class="field">
+      <label>cook this again?</label>
+      <div class="again-toggle" id="cookedAgainToggle">
+        <button type="button" class="again-btn yes" onclick="setAgainToggle('cookedAgainToggle', true)">👍 Yes</button>
+        <button type="button" class="again-btn no" onclick="setAgainToggle('cookedAgainToggle', false)">👎 No</button>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('cookedOverlay')">Cancel</button>
+      <button class="btn green" onclick="saveStandaloneCooked()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL = 'https://eyysxvdemncgigmknjgu.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_3rPtZJJRv7iJ-snpGn6oew_94G9c8J3';
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  const T_BOOK = 'CookBook_Name';
+  const T_RECIPE = 'CookBook_Recipe';
+  const T_COOKED = 'CookBook_Cooked';
+
+  const PALETTE = ['#FFC93C','#FF4D8D','#3A7BFF','#33B27A','#FF7A33','#8C6BF2'];
+
+  let books = [];
+  let recipes = [];
+  let cookedByRecipe = {};
+  let cookedAll = [];
+  let currentTab = 'dashboard';
+  let currentISBN = 'all';
+  let searchTerm = '';
+  let expandedRecipe = null;
+
+  function toast(msg, isError){
+    const t = document.createElement('div');
+    t.className = 'toast' + (isError ? ' error' : '');
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(()=> t.remove(), 3800);
+  }
+
+  function toggleSearch(){
+    document.getElementById('searchBar').classList.toggle('open');
+    if(currentTab !== 'books') switchTab('books');
+    document.getElementById('searchInput').focus();
+  }
+
+  function switchTab(tab){
+    currentTab = tab;
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-'+tab).classList.add('active');
+    document.querySelectorAll('.navbtn').forEach(b => b.classList.remove('active'));
+    document.getElementById('nav-'+tab).classList.add('active');
+    if(tab === 'dashboard') renderDashboard();
+    if(tab === 'books') renderBooksTab();
+    if(tab === 'cooked') renderCookedTab();
+  }
+
+  async function loadAll(){
+    const [{data:b, error:eb}, {data:r, error:er}, {data:c, error:ec}] = await Promise.all([
+      sb.from(T_BOOK).select('*').order('Title', {ascending:true}),
+      sb.from(T_RECIPE).select('*').order('RecipeName', {ascending:true}),
+      sb.from(T_COOKED).select('*')
+    ]);
+    if(eb || er || ec){
+      console.error(eb, er, ec);
+      toast('Could not load data — check RLS policies on your Supabase tables.', true);
+      return;
+    }
+    books = b || [];
+    recipes = r || [];
+    cookedAll = (c || []).slice().sort((a,z) => String(z.DateCooked).localeCompare(String(a.DateCooked)));
+    cookedByRecipe = {};
+    cookedAll.forEach(entry => {
+      if(!cookedByRecipe[entry.RecipeID]) cookedByRecipe[entry.RecipeID] = [];
+      cookedByRecipe[entry.RecipeID].push(entry);
+    });
+    switchTab(currentTab);
+  }
+
+  function bookById(isbn){ return books.find(b => String(b.ISBN) === String(isbn)); }
+  function recipeById(id){ return recipes.find(r => String(r.RecipeID) === String(id)); }
+  function bookColor(isbn){
+    const idx = books.findIndex(b => String(b.ISBN) === String(isbn));
+    return PALETTE[(idx < 0 ? 0 : idx) % PALETTE.length];
+  }
+
+  // ---------------- DASHBOARD ----------------
+  function renderDashboard(){
+    document.getElementById('statBooks').textContent = books.length;
+    document.getElementById('statRecipes').textContent = recipes.length;
+    const avg = cookedAll.length ? (cookedAll.reduce((s,c)=>s+(Number(c.Rating)||0),0)/cookedAll.length).toFixed(1) : '–';
+    document.getElementById('statAvg').textContent = avg;
+
+    renderTonight();
+
+    const recentWrap = document.getElementById('recentList');
+    if(cookedAll.length === 0){
+      recentWrap.innerHTML = `<div class="empty-msg">nothing logged yet — cook something and add it!</div>`;
+    } else {
+      recentWrap.innerHTML = cookedAll.slice(0,5).map(c => {
+        const recipe = recipeById(c.RecipeID);
+        const book = recipe ? bookById(recipe.ISBN) : null;
+        return `
+          <div class="recent-item">
+            <div>
+              <div class="name">${escapeHtml(recipe ? recipe.RecipeName : 'Unknown recipe')}</div>
+              <div class="sub">${escapeHtml(book ? book.Title : '')} · ${escapeHtml(c.DateCooked || '')} ${againBadgeHtml(c.CookAgain)}</div>
+            </div>
+            <div class="rating-chip">${c.Rating ?? '—'}</div>
+          </div>
+        `;
+      }).join('');
+    }
+  }
+
+  let tonightPick = null;
+  function renderTonight(){
+    const body = document.getElementById('tonightBody');
+    if(recipes.length === 0){
+      body.innerHTML = `<div class="tonight-empty">Add a few recipes first!</div>`;
+      return;
+    }
+    if(!tonightPick) tonightPick = recipes[Math.floor(Math.random()*recipes.length)];
+    const book = bookById(tonightPick.ISBN);
+    body.innerHTML = `
+      <div class="dish">${escapeHtml(tonightPick.RecipeName)}</div>
+      <div class="from">${escapeHtml(book ? book.Title : '')}${tonightPick.Page ? ' · p.'+escapeHtml(String(tonightPick.Page)) : ''}</div>
+    `;
+  }
+  function rollTonight(){
+    if(recipes.length === 0) return;
+    let pick;
+    do{ pick = recipes[Math.floor(Math.random()*recipes.length)]; }
+    while(recipes.length > 1 && tonightPick && pick.RecipeID === tonightPick.RecipeID);
+    tonightPick = pick;
+    renderTonight();
+  }
+
+  // ---------------- BOOKS TAB ----------------
+  function renderBooksTab(){
+    const chipsWrap = document.getElementById('shelfChips');
+    let chipsHtml = `<button class="chip ${currentISBN==='all'?'active':''}" onclick="selectBook('all')">All books</button>`;
+    chipsHtml += books.map(b => `<button class="chip ${String(currentISBN)===String(b.ISBN)?'active':''}" onclick="selectBook('${b.ISBN}')">${escapeHtml(b.Title)}</button>`).join('');
+    chipsWrap.innerHTML = chipsHtml;
+
+    const head = document.getElementById('booksMainHead');
+    if(currentISBN !== 'all'){
+      const book = bookById(currentISBN);
+      head.innerHTML = book ? `
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+          <div>
+            <h2 style="font-size:20px;">${escapeHtml(book.Title)}</h2>
+            <div class="mono" style="font-size:11.5px; color:#777; margin-top:2px;">${escapeHtml(book.Author||'')}${book.Location ? ' · '+escapeHtml(book.Location) : ''}</div>
+          </div>
+          <div style="display:flex; gap:6px; flex-shrink:0;">
+            <button class="btn small" onclick="openBookModal('${book.ISBN}')">Edit</button>
+            <button class="btn small danger" onclick="deleteBook('${book.ISBN}')">Delete</button>
+          </div>
+        </div>
+      ` : '';
+    } else {
+      head.innerHTML = '';
+    }
+
+    let list = recipes;
+    if(currentISBN !== 'all') list = list.filter(r => String(r.ISBN) === String(currentISBN));
+    if(searchTerm.trim()){
+      const q = searchTerm.trim().toLowerCase();
+      list = list.filter(r => (r.RecipeName||'').toLowerCase().includes(q) || String(r.Page||'').toLowerCase().includes(q));
+    }
+
+    const wrap = document.getElementById('cardsWrap');
+    const empty = document.getElementById('emptyState');
+    wrap.innerHTML = '';
+    if(list.length === 0){ empty.style.display = 'block'; return; }
+    empty.style.display = 'none';
+
+    list.forEach(recipe => {
+      const book = bookById(recipe.ISBN);
+      const cooked = cookedByRecipe[recipe.RecipeID] || [];
+      const avgRating = cooked.length ? (cooked.reduce((s,c)=>s+(Number(c.Rating)||0),0)/cooked.length).toFixed(1) : null;
+      const pageLabel = recipe.Page ? `p. ${escapeHtml(String(recipe.Page))}` : 'no page';
+
+      const card = document.createElement('div');
+      card.className = 'card' + (expandedRecipe === recipe.RecipeID ? ' expanded' : '');
+      card.innerHTML = `
+        <div class="card-row" onclick="toggleExpand(${recipe.RecipeID})">
+          <div class="card-title">
+            <span class="name">${escapeHtml(recipe.RecipeName || '(untitled)')}</span>
+            ${currentISBN==='all' && book ? `<span class="book-tag">${escapeHtml(book.Title)}</span>` : ''}
+          </div>
+          <div class="card-right">
+            ${cooked.length ? `<span class="mono" style="font-size:11px; color:#777;">🔥${cooked.length} · ${avgRating}</span>` : ''}
+            <span class="page-pill ${recipe.Page ? '' : 'none'}">${pageLabel}</span>
+            <span class="chevron">›</span>
+          </div>
+        </div>
+        <div class="card-body" id="body-${recipe.RecipeID}"></div>
+      `;
+      wrap.appendChild(card);
+      if(expandedRecipe === recipe.RecipeID) renderCardBody(recipe.RecipeID);
+    });
+  }
+
+  function selectBook(isbn){ currentISBN = isbn; expandedRecipe = null; renderBooksTab(); }
+  function toggleExpand(id){ expandedRecipe = expandedRecipe === id ? null : id; renderBooksTab(); }
+
+  function renderCardBody(recipeId){
+    const el = document.getElementById(`body-${recipeId}`);
+    if(!el) return;
+    const cooked = cookedByRecipe[recipeId] || [];
+    let logHtml = cooked.length === 0
+      ? `<div class="no-log">not cooked yet</div>`
+      : `<div class="cooked-log">` + cooked.map(c => `
+          <div class="cooked-entry">
+            <div class="left"><span class="date">${escapeHtml(c.DateCooked||'')}</span>${escapeHtml(c.Comments||'')} ${againBadgeHtml(c.CookAgain)}</div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="mono" style="font-weight:700; color:var(--green);">${c.Rating ?? '—'}</span>
+              <button class="btn small danger" onclick="deleteCooked(${c.CookedID}, ${recipeId})">✕</button>
+            </div>
+          </div>
+        `).join('') + `</div>`;
+
+    el.innerHTML = `
+      ${logHtml}
+      <div class="inline-form">
+        <input type="date" id="newDate-${recipeId}">
+        <input type="number" step="0.1" min="0" max="10" placeholder="rating" id="newRating-${recipeId}" style="width:80px;">
+        <input type="text" placeholder="comments" id="newComments-${recipeId}" style="flex:1; min-width:120px;">
+      </div>
+      <div class="inline-form">
+        <span class="mono" style="font-size:11px; color:#999;">cook again?</span>
+        <div class="again-toggle" id="newAgain-${recipeId}">
+          <button type="button" class="again-btn yes" onclick="setAgainToggle('newAgain-${recipeId}', true)">👍</button>
+          <button type="button" class="again-btn no" onclick="setAgainToggle('newAgain-${recipeId}', false)">👎</button>
+        </div>
+        <button class="btn green small" onclick="addCooked(${recipeId})">Log</button>
+      </div>
+      <div class="row-actions">
+        <button class="btn small" onclick="openRecipeModal(${recipeId})">Edit recipe</button>
+        <button class="btn small danger" onclick="deleteRecipe(${recipeId})">Delete recipe</button>
+      </div>
+    `;
+  }
+
+  // ---------------- COOKED TAB ----------------
+  function renderCookedTab(){
+    const wrap = document.getElementById('cookedFullList');
+    const empty = document.getElementById('cookedEmpty');
+    if(cookedAll.length === 0){ wrap.innerHTML=''; empty.style.display='block'; return; }
+    empty.style.display = 'none';
+    wrap.innerHTML = cookedAll.map(c => {
+      const recipe = recipeById(c.RecipeID);
+      const book = recipe ? bookById(recipe.ISBN) : null;
+      return `
+        <div class="cooked-full-item">
+          <div class="cooked-full-top">
+            <div>
+              <div class="name">${escapeHtml(recipe ? recipe.RecipeName : 'Unknown recipe')}</div>
+              <div class="book">${escapeHtml(book ? book.Title : '')}</div>
+            </div>
+            <div class="rating-chip" style="background:${bookColor(book?.ISBN)};">${c.Rating ?? '—'}</div>
+          </div>
+          ${c.Comments ? `<div class="cooked-full-comment">${escapeHtml(c.Comments)}</div>` : ''}
+          <div class="cooked-full-bottom">
+            <span class="date">${escapeHtml(c.DateCooked||'')} ${againBadgeHtml(c.CookAgain)}</span>
+            <button class="btn small danger" onclick="deleteCooked(${c.CookedID}, ${c.RecipeID})">Remove</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  const againState = {}; // toggleId -> true/false/undefined
+
+  function setAgainToggle(toggleId, value){
+    againState[toggleId] = value;
+    const wrap = document.getElementById(toggleId);
+    if(!wrap) return;
+    wrap.querySelectorAll('.again-btn').forEach(b => b.classList.remove('on'));
+    const btn = wrap.querySelector(value ? '.again-btn.yes' : '.again-btn.no');
+    if(btn) btn.classList.add('on');
+  }
+
+  function openCookedModal(){
+    const sel = document.getElementById('cookedRecipeSelect');
+    sel.innerHTML = recipes.map(r => `<option value="${r.RecipeID}">${escapeHtml(r.RecipeName)}</option>`).join('');
+    document.getElementById('cookedDate').value = new Date().toISOString().slice(0,10);
+    document.getElementById('cookedRating').value = '';
+    document.getElementById('cookedComments').value = '';
+    delete againState['cookedAgainToggle'];
+    document.getElementById('cookedAgainToggle').querySelectorAll('.again-btn').forEach(b => b.classList.remove('on'));
+    document.getElementById('cookedOverlay').classList.add('open');
+  }
+
+  async function saveStandaloneCooked(){
+    const recipeId = document.getElementById('cookedRecipeSelect').value;
+    const date = document.getElementById('cookedDate').value;
+    const rating = document.getElementById('cookedRating').value;
+    const comments = document.getElementById('cookedComments').value.trim();
+    if(!recipeId || !date){ toast('Pick a recipe and a date.', true); return; }
+    const again = 'cookedAgainToggle' in againState ? againState['cookedAgainToggle'] : null;
+    const {error} = await sb.from(T_COOKED).insert({
+      RecipeID: recipeId, DateCooked: date, Comments: comments, Rating: rating ? Number(rating) : 0, CookAgain: again
+    });
+    if(error){ toast('Could not log: ' + error.message, true); return; }
+    closeModal('cookedOverlay');
+    toast('Logged!');
+    await loadAll();
+    switchTab('cooked');
+  }
+
+  // ---------------- Book CRUD ----------------
+  function openBookModal(isbn){
+    document.getElementById('bookModalTitle').textContent = isbn ? 'Edit cookbook' : 'Add a cookbook';
+    const book = isbn ? bookById(isbn) : null;
+    document.getElementById('bookOriginalISBN').value = isbn || '';
+    document.getElementById('bookISBN').value = book ? book.ISBN : '';
+    document.getElementById('bookISBN').disabled = !!book;
+    document.getElementById('bookTitle').value = book ? book.Title || '' : '';
+    document.getElementById('bookAuthor').value = book ? book.Author || '' : '';
+    document.getElementById('bookLocation').value = book ? book.Location || '' : '';
+    document.getElementById('bookOverlay').classList.add('open');
+  }
+
+  async function saveBook(){
+    const original = document.getElementById('bookOriginalISBN').value;
+    const isbn = document.getElementById('bookISBN').value.trim();
+    const title = document.getElementById('bookTitle').value.trim();
+    const author = document.getElementById('bookAuthor').value.trim();
+    const location = document.getElementById('bookLocation').value.trim();
+    if(!isbn || !title){ toast('ISBN and title are required.', true); return; }
+    let error;
+    if(original){
+      ({error} = await sb.from(T_BOOK).update({Title:title, Author:author, Location:location}).eq('ISBN', original));
+    } else {
+      ({error} = await sb.from(T_BOOK).insert({ISBN:isbn, Title:title, Author:author, Location:location}));
+    }
+    if(error){ toast('Could not save book: ' + error.message, true); return; }
+    closeModal('bookOverlay');
+    toast('Cookbook saved!');
+    await loadAll();
+  }
+
+  async function deleteBook(isbn){
+    if(recipes.some(r => String(r.ISBN) === String(isbn))){
+      toast('This book still has recipes attached. Delete those first.', true);
+      return;
+    }
+    if(!confirm('Delete this cookbook?')) return;
+    const {error} = await sb.from(T_BOOK).delete().eq('ISBN', isbn);
+    if(error){ toast('Could not delete: ' + error.message, true); return; }
+    currentISBN = 'all';
+    toast('Cookbook removed.');
+    await loadAll();
+  }
+
+  // ---------------- Recipe CRUD ----------------
+  function openRecipeModal(recipeId){
+    document.getElementById('recipeModalTitle').textContent = recipeId ? 'Edit recipe' : 'Add a recipe';
+    const recipe = recipeId ? recipeById(recipeId) : null;
+    document.getElementById('recipeOriginalID').value = recipeId || '';
+    document.getElementById('recipeName').value = recipe ? recipe.RecipeName || '' : '';
+    document.getElementById('recipePage').value = recipe ? recipe.Page || '' : '';
+    const select = document.getElementById('recipeBook');
+    select.innerHTML = books.map(b => `<option value="${b.ISBN}">${escapeHtml(b.Title)}</option>`).join('');
+    const preselect = recipe ? recipe.ISBN : (currentISBN !== 'all' ? currentISBN : (books[0]?.ISBN));
+    if(preselect) select.value = preselect;
+    document.getElementById('recipeOverlay').classList.add('open');
+  }
+
+  async function saveRecipe(){
+    const original = document.getElementById('recipeOriginalID').value;
+    const name = document.getElementById('recipeName').value.trim();
+    const isbn = document.getElementById('recipeBook').value;
+    const page = document.getElementById('recipePage').value.trim();
+    if(!name || !isbn){ toast('Recipe name and cookbook are required.', true); return; }
+    let error;
+    if(original){
+      ({error} = await sb.from(T_RECIPE).update({RecipeName:name, ISBN:isbn, Page:page || null}).eq('RecipeID', original));
+    } else {
+      ({error} = await sb.from(T_RECIPE).insert({RecipeName:name, ISBN:isbn, Page:page || null}));
+    }
+    if(error){ toast('Could not save recipe: ' + error.message, true); return; }
+    closeModal('recipeOverlay');
+    toast('Recipe saved!');
+    await loadAll();
+  }
+
+  async function deleteRecipe(recipeId){
+    if(!confirm('Delete this recipe? Its cooked log will be removed too.')) return;
+    await sb.from(T_COOKED).delete().eq('RecipeID', recipeId);
+    const {error} = await sb.from(T_RECIPE).delete().eq('RecipeID', recipeId);
+    if(error){ toast('Could not delete: ' + error.message, true); return; }
+    expandedRecipe = null;
+    toast('Recipe removed.');
+    await loadAll();
+  }
+
+  // ---------------- Cooked CRUD (inline) ----------------
+  async function addCooked(recipeId){
+    const date = document.getElementById(`newDate-${recipeId}`).value;
+    const rating = document.getElementById(`newRating-${recipeId}`).value;
+    const comments = document.getElementById(`newComments-${recipeId}`).value.trim();
+    if(!date){ toast('Pick a date cooked.', true); return; }
+    const toggleId = `newAgain-${recipeId}`;
+    const again = toggleId in againState ? againState[toggleId] : null;
+    const {error} = await sb.from(T_COOKED).insert({RecipeID:recipeId, DateCooked:date, Comments:comments, Rating: rating ? Number(rating) : 0, CookAgain: again});
+    if(error){ toast('Could not log: ' + error.message, true); return; }
+    delete againState[toggleId];
+    toast('Logged!');
+    await loadAll();
+    expandedRecipe = recipeId;
+    switchTab('books');
+  }
+
+  async function deleteCooked(cookedId, recipeId){
+    if(!confirm('Remove this log entry?')) return;
+    const {error} = await sb.from(T_COOKED).delete().eq('CookedID', cookedId);
+    if(error){ toast('Could not delete: ' + error.message, true); return; }
+    const wasTab = currentTab;
+    await loadAll();
+    expandedRecipe = recipeId;
+    switchTab(wasTab);
+  }
+
+  // ---------------- Helpers ----------------
+  function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+  function escapeHtml(str){
+    return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+  function againBadgeHtml(val){
+    if(val === true || val === 'true' || val === 't') return `<span class="again-badge yes">👍 again</span>`;
+    if(val === false || val === 'false' || val === 'f') return `<span class="again-badge no">👎 skip</span>`;
+    return '';
+  }
+
+  document.getElementById('searchInput').addEventListener('input', (e) => {
+    searchTerm = e.target.value;
+    renderBooksTab();
+  });
+  document.querySelectorAll('.overlay').forEach(ov => {
+    ov.addEventListener('click', (e) => { if(e.target === ov) ov.classList.remove('open'); });
+  });
+
+  loadAll();
+</script>
+</body>
+</html>
