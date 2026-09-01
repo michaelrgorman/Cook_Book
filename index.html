@@ -118,9 +118,9 @@
   .recent-item .name{ font-weight:600; font-size:15px; }
   .recent-item .sub{ font-family:'Space Mono', monospace; font-size:11px; color:#666; margin-top:2px; }
   .rating-chip{
-    background: var(--yellow); border-radius:50%; width:38px; height:38px; flex-shrink:0;
-    display:flex; align-items:center; justify-content:center; font-family:'Space Mono', monospace; font-weight:700; font-size:13px;
-    border: 2px solid var(--ink);
+    background: var(--yellow); border-radius:20px; min-width:44px; height:32px; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center; font-family:'Space Mono', monospace; font-weight:700; font-size:12px;
+    border: 2px solid var(--ink); padding: 0 8px; white-space:nowrap;
   }
   .empty-msg{
     font-family:'Space Mono', monospace; font-size:12.5px; color:#777; text-align:center; padding: 24px 10px;
@@ -357,7 +357,7 @@
     <div class="modal-handle"></div>
     <h3>Log a cook</h3>
     <div class="field"><label>recipe</label><select id="cookedRecipeSelect"></select></div>
-    <div class="field"><label>date cooked</label><input type="date" id="cookedDate"></div>
+    <div class="field"><label>date cooked</label><input type="date" id="cookedDate" max=""></div>
     <div class="field"><label>rating (0–10)</label><input type="number" step="0.1" min="0" max="10" id="cookedRating"></div>
     <div class="field"><label>comments</label><textarea id="cookedComments"></textarea></div>
     <div class="field">
@@ -470,7 +470,7 @@
               <div class="name">${escapeHtml(recipe ? recipe.RecipeName : 'Unknown recipe')}</div>
               <div class="sub">${escapeHtml(book ? book.Title : '')} · ${escapeHtml(c.DateCooked || '')} ${againBadgeHtml(c.CookAgain)}</div>
             </div>
-            <div class="rating-chip">${c.Rating ?? '—'}</div>
+            <div class="rating-chip">${formatRating(c.Rating)}</div>
           </div>
         `;
       }).join('');
@@ -572,7 +572,7 @@
             ${recipe.Tags ? `<div class="card-tags">${escapeHtml(recipe.Tags)}</div>` : ''}
           </div>
           <div class="card-right">
-            ${cooked.length ? `<span class="mono" style="font-size:11px; color:#777;">🔥${cooked.length} · ${avgRating}</span>` : ''}
+            ${cooked.length ? `<span class="mono" style="font-size:11px; color:#777;">🔥${cooked.length} · ${avgRating}/10</span>` : ''}
             <span class="page-pill ${recipe.Page ? '' : 'none'}">${pageLabel}</span>
             <span class="chevron">›</span>
           </div>
@@ -620,7 +620,7 @@
           <div class="cooked-entry">
             <div class="left"><span class="date">${escapeHtml(c.DateCooked||'')}</span>${escapeHtml(c.Comments||'')} ${againBadgeHtml(c.CookAgain)}</div>
             <div style="display:flex; align-items:center; gap:8px;">
-              <span class="mono" style="font-weight:700; color:var(--green);">${c.Rating ?? '—'}</span>
+              <span class="mono" style="font-weight:700; color:var(--green);">${formatRating(c.Rating)}</span>
               <button class="btn small danger" onclick="deleteCooked(${c.CookedID}, ${recipeId})">✕</button>
             </div>
           </div>
@@ -629,7 +629,7 @@
     el.innerHTML = `
       ${logHtml}
       <div class="inline-form">
-        <input type="date" id="newDate-${recipeId}">
+        <input type="date" id="newDate-${recipeId}" max="${todayStr()}">
         <input type="number" step="0.1" min="0" max="10" placeholder="rating" id="newRating-${recipeId}" style="width:80px;">
         <input type="text" placeholder="comments" id="newComments-${recipeId}" style="flex:1; min-width:120px;">
       </div>
@@ -664,7 +664,7 @@
               <div class="name">${escapeHtml(recipe ? recipe.RecipeName : 'Unknown recipe')}</div>
               <div class="book">${escapeHtml(book ? book.Title : '')}</div>
             </div>
-            <div class="rating-chip" style="background:${bookColor(book?.ISBN)};">${c.Rating ?? '—'}</div>
+            <div class="rating-chip" style="background:${bookColor(book?.ISBN)};">${formatRating(c.Rating)}</div>
           </div>
           ${c.Comments ? `<div class="cooked-full-comment">${escapeHtml(c.Comments)}</div>` : ''}
           <div class="cooked-full-bottom">
@@ -690,7 +690,9 @@
   function openCookedModal(){
     const sel = document.getElementById('cookedRecipeSelect');
     sel.innerHTML = recipes.map(r => `<option value="${r.RecipeID}">${escapeHtml(r.RecipeName)}</option>`).join('');
-    document.getElementById('cookedDate').value = new Date().toISOString().slice(0,10);
+    const dateInput = document.getElementById('cookedDate');
+    dateInput.max = todayStr();
+    dateInput.value = todayStr();
     document.getElementById('cookedRating').value = '';
     document.getElementById('cookedComments').value = '';
     delete againState['cookedAgainToggle'];
@@ -701,12 +703,14 @@
   async function saveStandaloneCooked(){
     const recipeId = document.getElementById('cookedRecipeSelect').value;
     const date = document.getElementById('cookedDate').value;
-    const rating = document.getElementById('cookedRating').value;
     const comments = document.getElementById('cookedComments').value.trim();
     if(!recipeId || !date){ toast('Pick a recipe and a date.', true); return; }
+    if(date > todayStr()){ toast('Cook date can\'t be in the future.', true); return; }
+    const rating = validateRating(document.getElementById('cookedRating').value);
+    if(rating === false) return;
     const again = 'cookedAgainToggle' in againState ? againState['cookedAgainToggle'] : null;
     const {error} = await sb.from(T_COOKED).insert({
-      RecipeID: recipeId, DateCooked: date, Comments: comments, Rating: rating ? Number(rating) : 0, CookAgain: again
+      RecipeID: recipeId, DateCooked: date, Comments: comments, Rating: rating ?? 0, CookAgain: again
     });
     if(error){ toast('Could not log: ' + error.message, true); return; }
     closeModal('cookedOverlay');
@@ -807,12 +811,14 @@
   // ---------------- Cooked CRUD (inline) ----------------
   async function addCooked(recipeId){
     const date = document.getElementById(`newDate-${recipeId}`).value;
-    const rating = document.getElementById(`newRating-${recipeId}`).value;
     const comments = document.getElementById(`newComments-${recipeId}`).value.trim();
     if(!date){ toast('Pick a date cooked.', true); return; }
+    if(date > todayStr()){ toast('Cook date can\'t be in the future.', true); return; }
+    const rating = validateRating(document.getElementById(`newRating-${recipeId}`).value);
+    if(rating === false) return;
     const toggleId = `newAgain-${recipeId}`;
     const again = toggleId in againState ? againState[toggleId] : null;
-    const {error} = await sb.from(T_COOKED).insert({RecipeID:recipeId, DateCooked:date, Comments:comments, Rating: rating ? Number(rating) : 0, CookAgain: again});
+    const {error} = await sb.from(T_COOKED).insert({RecipeID:recipeId, DateCooked:date, Comments:comments, Rating: rating ?? 0, CookAgain: again});
     if(error){ toast('Could not log: ' + error.message, true); return; }
     delete againState[toggleId];
     toast('Logged!');
@@ -836,6 +842,24 @@
   function escapeHtml(str){
     return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   }
+  function todayStr(){ return new Date().toISOString().slice(0,10); }
+
+  function formatRating(val){
+    if(val === null || val === undefined || val === '') return '–';
+    return `${val}/10`;
+  }
+
+  // Returns a numeric rating in [0,10], or null if left blank, or false if invalid (and shows a toast)
+  function validateRating(raw){
+    if(raw === '' || raw === null || raw === undefined) return null;
+    const n = Number(raw);
+    if(isNaN(n) || n < 0 || n > 10){
+      toast('Rating has to be between 0.0 and 10.0.', true);
+      return false;
+    }
+    return n;
+  }
+
   function againBadgeHtml(val){
     if(val === true || val === 'true' || val === 't') return `<span class="again-badge yes">👍 again</span>`;
     if(val === false || val === 'false' || val === 'f') return `<span class="again-badge no">👎 skip</span>`;
