@@ -1,0 +1,120 @@
+Cook This! 
+
+A little home-grown app for keeping track of my cookbooks, the recipes in them (and what page they're on, because I am sick of flipping through nine books looking for that one lamb shank recipe), and a log of what I've actually cooked and whether it was any good.
+
+It's a single HTML file that talks straight to a Supabase database. No backend server, no build step, no npm install — just open the file (or the live link) and go. Built it mostly because I got tired of scrolling through my phone's Notes app trying to remember which book had the good braised lentils recipe in it.
+
+Live version: cook-book-pearl-two.vercel.app
+
+What it actually does
+ Home dashboard — quick stats (how many books, how many recipes, average rating across everything I've cooked), a "what should I cook tonight?" random picker (can filter it by tag too, e.g. only roll from quick recipes), and a feed of the last 5 things I've cooked
+Books — a grid of my cookbooks (tap one to see its recipes), plus a separate Wishlist view for cookbooks I want but don't own yet
+Cooked log — every single time I've cooked something, with the date, my rating out of 10, comments, and a 👍/👎 on whether I'd make it again
+Stats — the nerdy stuff: most-cooked recipe, top-rated recipe, most-cooked book, top-rated book, how many recipes I've never actually tried, and what % of meals I've said I'd cook again
+Favorites — star any recipe to pin it for quick access
+Search — searches recipe names, page numbers, and tags all at once. It's a "contains all these words somewhere" search, not an exact-phrase match, so typing bacon bean will find "Bacon and Beans" fine Dark mode — toggle in the top bar, also auto-matches your phone's system theme on load
+Full add/edit/delete on everything — cookbooks, recipes, and cooked log entries
+
+It's designed mobile-first (bottom tab bar, big touch targets) because realistically I'm going to be checking this on my phone standing in the kitchen, not on a laptop.
+
+How it's built
+
+Plain HTML, CSS, and vanilla JavaScript — one file, no frameworks
+Supabase as the database/backend, talked to directly from the browser using the @supabase/supabase-js client (loaded from a CDN, no install needed)
+Fonts: Fredoka for the bold rounded headings, Space Mono for the little metadata/label text (dates, page numbers, tags)
+Hosted for free on GitHub Pages
+manifest.json + icon.svg so it can be "installed" to a phone home screen as a standalone app (a Progressive Web App, basically) — no app store needed
+
+The whole visual style is loosely inspired by Crumpler (the Melbourne bag brand) — bold flat colours, thick black outlines, chunky rounded type, a bit of a comic/sticker feel rather than anything corporate-looking.
+
+The database
+
+Three tables in Supabase, originally migrated over from an old MySQL cookbook database I'd been keeping. Column names kept their original mixed-case from that migration (e.g. RecipeID not recipeid), which matters because Postgres is case-sensitive about quoted identifiers — so the queries in the code use the exact casing below.
+
+CookBook_Name — the cookbooks themselves
+Column	Type	Notes
+ISBN	bigint	Primary key. For wishlist books without a real ISBN handy, any placeholder number works.
+Title	text	
+Author	text	
+Location	text	Where it lives physically, e.g. "kitchen shelf"
+Wishlist	boolean	true = don't own it yet, false/null = on the actual shelf
+CookBook_Recipe — recipes inside a book
+Column	Type	Notes
+RecipeID	bigint	Primary key, auto-incrementing
+RecipeName	text	
+Page	text	Text rather than a number, since some books use things like "12-13" or roman numerals
+ISBN	bigint	Foreign key → CookBook_Name.ISBN
+Tags	text	Comma-separated free text, e.g. pasta, quick, spicy
+IsFavorite	boolean	Starred recipes
+CookBook_Cooked — the log of what's actually been made
+Column	Type	Notes
+CookedID	bigint	Primary key, auto-incrementing
+RecipeID	bigint	Foreign key → CookBook_Recipe.RecipeID
+DateCooked	text	Locked in the UI to between Jan 1 2026 and today — no future dates, no ancient ones
+Comments	text	
+Rating	double precision	0.0–10.0, validated on save
+CookAgain	boolean	👍/👎, optional
+
+If you're setting this up fresh rather than migrating an old database, here's roughly the schema as SQL:
+
+sql
+create table "CookBook_Name" (
+  "ISBN" bigint primary key,
+  "Title" text,
+  "Author" text,
+  "Location" text,
+  "Wishlist" boolean default false
+);
+
+create table "CookBook_Recipe" (
+  "RecipeID" bigint generated always as identity primary key,
+  "RecipeName" text,
+  "Page" text,
+  "ISBN" bigint references "CookBook_Name"("ISBN"),
+  "Tags" text,
+  "IsFavorite" boolean default false
+);
+
+create table "CookBook_Cooked" (
+  "CookedID" bigint generated always as identity primary key,
+  "RecipeID" bigint references "CookBook_Recipe"("RecipeID"),
+  "DateCooked" text,
+  "Comments" text,
+  "Rating" double precision,
+  "CookAgain" boolean
+);
+Setting it up yourself
+Create a Supabase project (free tier is plenty) at supabase.com
+Run the SQL above in the Supabase SQL Editor to create the three tables
+Grab your Project URL and publishable/anon API key from Project Settings → API
+Drop them into index.html — near the top of the <script> tag:
+js
+   const SUPABASE_URL = 'https://your-project-ref.supabase.co';
+   const SUPABASE_KEY = 'your-publishable-key';
+Turn off Row Level Security on all three tables (or add "allow all" policies) — otherwise Supabase blocks every read/write by default:
+sql
+   alter table "CookBook_Name" disable row level security;
+   alter table "CookBook_Recipe" disable row level security;
+   alter table "CookBook_Cooked" disable row level security;
+Push index.html, manifest.json, and icon.svg to a GitHub repo
+In the repo, go to Settings → Pages, set the source to your main branch / root folder
+Your app is now live at https://yourusername.github.io/your-repo-name/
+
+To install it as an app on Android: open the live link in Chrome, tap the ⋮ menu, and choose "Install app". It'll sit on your home screen with its own icon and open full-screen like a native app.
+
+⚠️ Heads up on security
+
+There's no login system here — it's a single-user personal project. The Supabase key embedded in the HTML is the "publishable" key, which is meant to be public (Supabase's security model relies on Row Level Security policies, not on hiding that key). But since RLS is turned off entirely for simplicity, anyone who finds your live URL can read and write your data.
+
+For a hobby cookbook tracker with no sensitive info in it, that's a totally reasonable trade-off. Just know it's not private. If that ever matters more, the fix is adding real Supabase Auth + RLS policies scoped to a logged-in user — more setup, but doable later without rebuilding anything.
+
+Also worth doing occasionally: export your tables as CSV from the Supabase Table Editor as a backup, just in case.
+
+A couple of quirks worth knowing
+Search matches individual words, not exact phrases. Typing "bacon bean" finds "Bacon and Beans" because it checks that each word appears somewhere, not that the whole phrase appears in a row.
+Dark mode doesn't persist between visits — it re-checks your phone's system theme setting each time you open the app rather than remembering a manual toggle.
+Editing a cooked log entry can't reassign it to a different recipe — if you logged a cook against the wrong recipe, delete it and re-add rather than trying to edit your way out.
+Wishlist books need some ISBN entered even if you don't know the real one — it's the primary key in the database, so it can't be blank.
+
+
+Read me created by AI... Sorry
