@@ -357,7 +357,7 @@
     <div class="modal-handle"></div>
     <h3>Log a cook</h3>
     <div class="field"><label>recipe</label><select id="cookedRecipeSelect"></select></div>
-    <div class="field"><label>date cooked</label><input type="date" id="cookedDate" max=""></div>
+    <div class="field"><label>date cooked</label><input type="date" id="cookedDate" min="2026-01-01"></div>
     <div class="field"><label>rating (0–10)</label><input type="number" step="0.1" min="0" max="10" id="cookedRating"></div>
     <div class="field"><label>comments</label><textarea id="cookedComments"></textarea></div>
     <div class="field">
@@ -629,7 +629,7 @@
     el.innerHTML = `
       ${logHtml}
       <div class="inline-form">
-        <input type="date" id="newDate-${recipeId}" max="${todayStr()}">
+        <input type="date" id="newDate-${recipeId}" min="${MIN_DATE}" max="${todayStr()}">
         <input type="number" step="0.1" min="0" max="10" placeholder="rating" id="newRating-${recipeId}" style="width:80px;">
         <input type="text" placeholder="comments" id="newComments-${recipeId}" style="flex:1; min-width:120px;">
       </div>
@@ -691,6 +691,7 @@
     const sel = document.getElementById('cookedRecipeSelect');
     sel.innerHTML = recipes.map(r => `<option value="${r.RecipeID}">${escapeHtml(r.RecipeName)}</option>`).join('');
     const dateInput = document.getElementById('cookedDate');
+    dateInput.min = MIN_DATE;
     dateInput.max = todayStr();
     dateInput.value = todayStr();
     document.getElementById('cookedRating').value = '';
@@ -706,6 +707,7 @@
     const comments = document.getElementById('cookedComments').value.trim();
     if(!recipeId || !date){ toast('Pick a recipe and a date.', true); return; }
     if(date > todayStr()){ toast('Cook date can\'t be in the future.', true); return; }
+    if(date < MIN_DATE){ toast('Cook date can\'t be before Jan 2026.', true); return; }
     const rating = validateRating(document.getElementById('cookedRating').value);
     if(rating === false) return;
     const again = 'cookedAgainToggle' in againState ? againState['cookedAgainToggle'] : null;
@@ -814,6 +816,7 @@
     const comments = document.getElementById(`newComments-${recipeId}`).value.trim();
     if(!date){ toast('Pick a date cooked.', true); return; }
     if(date > todayStr()){ toast('Cook date can\'t be in the future.', true); return; }
+    if(date < MIN_DATE){ toast('Cook date can\'t be before Jan 2026.', true); return; }
     const rating = validateRating(document.getElementById(`newRating-${recipeId}`).value);
     if(rating === false) return;
     const toggleId = `newAgain-${recipeId}`;
@@ -843,6 +846,7 @@
     return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   }
   function todayStr(){ return new Date().toISOString().slice(0,10); }
+  const MIN_DATE = '2026-01-01';
 
   function formatRating(val){
     if(val === null || val === undefined || val === '') return '–';
