@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title>Cook This!</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#161616">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cook This!">
+<link rel="apple-touch-icon" href="icon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -18,20 +24,36 @@
     --ink:#161616;
     --cream:#FFF6E9;
     --card:#FFFFFF;
+    --text:#161616;
+    --muted:#777777;
     --line:3px;
   }
   *{ box-sizing:border-box; -webkit-tap-highlight-color: transparent; }
   html,body{ margin:0; padding:0; }
   body{
     background: var(--cream);
-    color: var(--ink);
+    color: var(--text);
     font-family:'Fredoka', sans-serif;
     padding-bottom: 84px;
     min-height:100vh;
+    transition: background 0.15s ease, color 0.15s ease;
   }
   .mono{ font-family:'Space Mono', monospace; }
   h1,h2,h3{ font-family:'Fredoka', sans-serif; margin:0; }
   button{ font-family:'Fredoka', sans-serif; }
+
+  /* ---------- Dark mode ---------- */
+  body.dark{
+    --cream:#17171B;
+    --card:#232329;
+    --text:#F3EFE4;
+    --muted:#9C9C9C;
+  }
+  body.dark .cooked-entry{ background:#1B1B20; }
+  body.dark .card-body{ border-top-color:#33333a; }
+  body.dark .field input, body.dark .field select, body.dark .field textarea{ background:#fff; color:#161616; }
+  body.dark .book-tile.add-tile{ color: var(--text); }
+  body.dark .page-pill.none{ background:#444; color:#ddd; }
 
   .hardline{ border: var(--line) solid var(--ink); }
   .pop{ box-shadow: 5px 5px 0 var(--ink); }
@@ -54,17 +76,18 @@
     background: var(--yellow); border: 2.5px solid var(--cream);
     display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;
   }
-  .logo h1{ font-size: 22px; font-weight:700; letter-spacing:-0.01em; color: var(--cream); }
-  .search-toggle{
-    width:40px; height:40px; border-radius:50%; background: var(--pink);
-    border: 2.5px solid var(--cream); color:var(--cream); font-size:16px;
-    display:flex; align-items:center; justify-content:center; flex-shrink:0;
+  .logo h1{ font-size: 22px; font-weight:700; letter-spacing:-0.01em; color: #FFF6E9; }
+  .topbar-actions{ display:flex; gap:8px; flex-shrink:0; }
+  .icon-btn{
+    width:40px; height:40px; border-radius:50%; border: 2.5px solid var(--cream); color:#FFF6E9;
+    font-size:16px; display:flex; align-items:center; justify-content:center; flex-shrink:0; background: var(--pink);
   }
+  .icon-btn.theme{ background: var(--blue); }
   .search-bar{ display:none; margin-top:14px; }
   .search-bar.open{ display:block; }
   .search-bar input{
-    width:100%; padding: 12px 14px; border-radius: 14px; border: 2.5px solid var(--cream);
-    background: var(--ink); color: var(--cream); font-family:'Space Mono', monospace; font-size:13px;
+    width:100%; padding: 12px 14px; border-radius: 14px; border: 2.5px solid #FFF6E9;
+    background: #0c0c0c; color: #FFF6E9; font-family:'Space Mono', monospace; font-size:13px;
   }
   .search-bar input::placeholder{ color: #b9b9b9; }
 
@@ -75,18 +98,20 @@
   .section-title{ font-size: 20px; font-weight:700; margin: 22px 0 12px; }
   .section-title:first-child{ margin-top:0; }
 
-  /* ---------- Stat cards (dashboard) ---------- */
+  /* ---------- Stat cards ---------- */
   .stats-row{ display:grid; grid-template-columns: repeat(3,1fr); gap:10px; }
   .stat-card{
     background: var(--card); border-radius:16px; padding: 14px 10px; text-align:center;
   }
   .stat-card .num{ font-size: 26px; font-weight:700; line-height:1; }
   .stat-card .label{ font-family:'Space Mono', monospace; font-size:10px; margin-top:6px; color:#444; text-transform:lowercase; }
-  .stat-card.c1{ background: var(--yellow); }
+  .stat-card.c1{ background: var(--yellow); color:#161616; }
+  .stat-card.c1 .label{ color:#4a3a08; }
   .stat-card.c2{ background: var(--pink); color:#fff; }
   .stat-card.c2 .label{ color:#ffe1ec; }
   .stat-card.c3{ background: var(--blue); color:#fff; }
   .stat-card.c3 .label{ color:#dbe8ff; }
+  .stat-card.plain .label{ color: var(--muted); }
 
   /* ---------- Tonight card ---------- */
   .tonight-card{
@@ -100,30 +125,42 @@
   .btn{
     font-family:'Fredoka', sans-serif; font-weight:600; font-size:14px;
     padding: 11px 18px; border-radius: 30px; border: var(--line) solid var(--ink);
-    background: var(--card); color: var(--ink); display:inline-flex; align-items:center; gap:6px;
+    background: var(--card); color: var(--text); display:inline-flex; align-items:center; gap:6px;
   }
   .btn.on-dark{ border-color:#fff; background: rgba(255,255,255,0.14); color:#fff; }
-  .btn.yellow{ background: var(--yellow); }
+  .btn.yellow{ background: var(--yellow); color:#161616; }
   .btn.pink{ background: var(--pink); color:#fff; border-color: var(--ink); }
   .btn.green{ background: var(--green); color:#fff; }
   .btn.block{ width:100%; justify-content:center; }
   .btn.small{ padding: 7px 12px; font-size:12.5px; }
   .btn.danger{ background:#fff; color:#D8425A; border-color:#D8425A; }
 
-  /* ---------- Recently cooked list ---------- */
+  /* ---------- Pill row (sort / tabs / tags) ---------- */
+  .pill-row{ display:flex; gap:6px; overflow-x:auto; margin-bottom:12px; -webkit-overflow-scrolling: touch; }
+  .pill-row::-webkit-scrollbar{ display:none; }
+  .pill-btn{
+    flex-shrink:0; font-family:'Space Mono', monospace; font-size:11px; font-weight:700;
+    padding:8px 13px; border-radius:20px; border:2px solid var(--ink); background: var(--card); color: var(--text);
+    white-space:nowrap;
+  }
+  .pill-btn.active{ background: var(--ink); color: var(--cream); }
+  .pill-btn.on-dark{ border-color:#fff; background: rgba(255,255,255,0.14); color:#fff; }
+  .pill-btn.on-dark.active{ background:#fff; color: var(--purple); }
+
+  /* ---------- Recently cooked / generic list items ---------- */
   .recent-item{
     background: var(--card); border-radius: 16px; padding: 12px 14px; margin-bottom:10px;
     display:flex; justify-content:space-between; align-items:center; gap:10px;
   }
   .recent-item .name{ font-weight:600; font-size:15px; }
-  .recent-item .sub{ font-family:'Space Mono', monospace; font-size:11px; color:#666; margin-top:2px; }
+  .recent-item .sub{ font-family:'Space Mono', monospace; font-size:11px; color: var(--muted); margin-top:2px; }
   .rating-chip{
     background: var(--yellow); border-radius:20px; min-width:44px; height:32px; flex-shrink:0;
     display:flex; align-items:center; justify-content:center; font-family:'Space Mono', monospace; font-weight:700; font-size:12px;
-    border: 2px solid var(--ink); padding: 0 8px; white-space:nowrap;
+    border: 2px solid var(--ink); padding: 0 8px; white-space:nowrap; color:#161616;
   }
   .empty-msg{
-    font-family:'Space Mono', monospace; font-size:12.5px; color:#777; text-align:center; padding: 24px 10px;
+    font-family:'Space Mono', monospace; font-size:12.5px; color: var(--muted); text-align:center; padding: 24px 10px;
     background: var(--card); border-radius:16px;
   }
 
@@ -141,11 +178,11 @@
     background: rgba(0,0,0,0.22); padding:3px 9px; border-radius:10px;
   }
   .book-tile.add-tile{
-    background: var(--card); color: var(--ink); align-items:center; justify-content:center;
+    background: var(--card); color: var(--text); align-items:center; justify-content:center;
     text-align:center; font-weight:600; font-size:14px; border-style:dashed; box-shadow:none;
   }
   .back-btn{ margin-bottom:12px; }
-  .card-tags{ font-family:'Space Mono', monospace; font-size:10.5px; color:#999; margin-top:3px; }
+  .card-tags{ font-family:'Space Mono', monospace; font-size:10.5px; color: var(--muted); margin-top:3px; }
 
   .fab-row{ display:flex; gap:8px; margin-bottom:14px; }
 
@@ -154,14 +191,15 @@
   .card{ background: var(--card); border-radius:18px; padding: 14px 16px; }
   .card-row{ display:flex; justify-content:space-between; align-items:center; gap:10px; cursor:pointer; }
   .card-title .name{ font-weight:600; font-size:16px; }
-  .card-title .book-tag{ display:block; font-family:'Space Mono', monospace; font-size:11px; color:#777; margin-top:2px; }
-  .card-right{ display:flex; align-items:center; gap:8px; flex-shrink:0; }
+  .card-title .book-tag{ display:block; font-family:'Space Mono', monospace; font-size:11px; color: var(--muted); margin-top:2px; }
+  .card-right{ display:flex; align-items:center; gap:6px; flex-shrink:0; }
+  .fav-btn{ background:none; border:none; font-size:19px; padding:2px; cursor:pointer; line-height:1; flex-shrink:0; }
   .page-pill{
     font-family:'Space Mono', monospace; font-size:11.5px; background: var(--green); color:#fff;
     padding:4px 10px; border-radius:20px; white-space:nowrap;
   }
   .page-pill.none{ background:#ccc; color:#555; }
-  .chevron{ font-size:18px; transition: transform 0.15s ease; color:#999; }
+  .chevron{ font-size:18px; transition: transform 0.15s ease; color: var(--muted); }
   .card.expanded .chevron{ transform: rotate(90deg); }
   .card-body{ display:none; margin-top:12px; padding-top:12px; border-top: 2px dashed #eee; }
   .card.expanded .card-body{ display:block; }
@@ -172,13 +210,13 @@
     padding: 9px 12px; border-radius:12px;
   }
   .cooked-entry .left{ font-size:13px; }
-  .cooked-entry .date{ font-family:'Space Mono', monospace; font-size:10.5px; color:#777; display:block; }
-  .no-log{ font-family:'Space Mono', monospace; font-size:12px; color:#999; margin-bottom:10px; }
+  .cooked-entry .date{ font-family:'Space Mono', monospace; font-size:10.5px; color: var(--muted); display:block; }
+  .no-log{ font-family:'Space Mono', monospace; font-size:12px; color: var(--muted); margin-bottom:10px; }
 
   .inline-form{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:10px; }
   .inline-form input{
     font-family:'Space Mono', monospace; font-size:12.5px; padding:9px 10px;
-    border-radius:10px; border: 2px solid #e5e0d3; background:#fff;
+    border-radius:10px; border: 2px solid #e5e0d3; background:#fff; color:#161616;
   }
   .again-toggle{ display:flex; gap:6px; }
   .again-btn{
@@ -201,10 +239,10 @@
   }
   .cooked-full-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
   .cooked-full-top .name{ font-weight:600; font-size:15.5px; }
-  .cooked-full-top .book{ font-family:'Space Mono', monospace; font-size:11px; color:#777; }
-  .cooked-full-comment{ font-size:14px; margin-top:8px; color:#333; }
+  .cooked-full-top .book{ font-family:'Space Mono', monospace; font-size:11px; color: var(--muted); }
+  .cooked-full-comment{ font-size:14px; margin-top:8px; color: var(--text); }
   .cooked-full-bottom{ display:flex; justify-content:space-between; align-items:center; margin-top:10px; }
-  .cooked-full-bottom .date{ font-family:'Space Mono', monospace; font-size:11px; color:#888; }
+  .cooked-full-bottom .date{ font-family:'Space Mono', monospace; font-size:11px; color: var(--muted); }
 
   /* ---------- Bottom nav ---------- */
   .bottomnav{
@@ -214,9 +252,9 @@
   }
   .navbtn{
     flex:1; background:none; border:none; color:#8b8b8b; padding: 11px 4px 9px;
-    display:flex; flex-direction:column; align-items:center; gap:3px; font-size:11px; font-weight:600;
+    display:flex; flex-direction:column; align-items:center; gap:3px; font-size:10.5px; font-weight:600;
   }
-  .navbtn .icon{ font-size:20px; }
+  .navbtn .icon{ font-size:19px; }
   .navbtn.active{ color: var(--yellow); }
 
   /* ---------- Modal ---------- */
@@ -225,7 +263,7 @@
   .modal{
     background: var(--cream); border-radius: 24px 24px 0 0; padding: 22px 20px calc(24px + env(safe-area-inset-bottom, 0px));
     width:100%; max-width: 480px; max-height: 86vh; overflow-y:auto;
-    border-top: var(--line) solid var(--ink);
+    border-top: var(--line) solid var(--ink); color: var(--text);
   }
   @media (min-width: 540px){
     .overlay{ align-items:center; }
@@ -234,11 +272,14 @@
   .modal-handle{ width:40px; height:5px; background:#ddd; border-radius:10px; margin: 0 auto 14px; }
   .modal h3{ font-size:20px; font-weight:700; margin-bottom:16px; }
   .field{ margin-bottom:12px; }
-  .field label{ display:block; font-family:'Space Mono', monospace; font-size:10.5px; color:#777; margin-bottom:4px; }
+  .field label{ display:block; font-family:'Space Mono', monospace; font-size:10.5px; color: var(--muted); margin-bottom:4px; }
   .field input, .field select, .field textarea{
     width:100%; padding:11px 12px; border-radius:12px; border: 2.5px solid var(--ink);
-    font-family:'Fredoka', sans-serif; font-size:15px; background:#fff; color: var(--ink);
+    font-family:'Fredoka', sans-serif; font-size:15px; background:#fff; color: #161616;
   }
+  .field.checkrow{ display:flex; align-items:center; gap:8px; }
+  .field.checkrow input{ width:auto; }
+  .field.checkrow label{ margin:0; font-size:13px; color: var(--text); font-family:'Fredoka', sans-serif; }
   .field textarea{ min-height:70px; resize:vertical; }
   .modal-actions{ display:flex; gap:8px; margin-top:18px; }
   .modal-actions .btn{ flex:1; }
@@ -259,10 +300,13 @@
       <div class="blob">🍝</div>
       <h1>Cook This!</h1>
     </div>
-    <button class="search-toggle" onclick="toggleSearch()">🔍</button>
+    <div class="topbar-actions">
+      <button class="icon-btn theme" id="themeToggle" onclick="toggleTheme()">🌙</button>
+      <button class="icon-btn" onclick="toggleSearch()">🔍</button>
+    </div>
   </div>
   <div class="search-bar" id="searchBar">
-    <input type="text" id="searchInput" placeholder="find a recipe or a page...">
+    <input type="text" id="searchInput" placeholder="find a recipe, page, or tag...">
   </div>
 </div>
 
@@ -276,6 +320,7 @@
 
   <div class="tonight-card" id="tonightCard">
     <div class="eyebrow">// what should i cook tonight?</div>
+    <div class="pill-row on-dark" id="tonightTagRow" style="margin-top:12px;"></div>
     <div id="tonightBody"><div class="tonight-empty">Add a few recipes first!</div></div>
     <button class="btn on-dark" onclick="rollTonight()">🎲 Roll again</button>
   </div>
@@ -287,7 +332,7 @@
 <!-- BOOKS -->
 <div class="page" id="page-books">
   <div id="booksGridWrap">
-    <div class="section-title" style="margin-top:0;">Your shelf</div>
+    <div class="pill-row" id="shelfViewTabs"></div>
     <div class="book-grid" id="bookGrid"></div>
   </div>
 
@@ -296,6 +341,7 @@
     <div class="fab-row">
       <button class="btn pink small pop-sm pressable" onclick="openRecipeModal()">+ Recipe</button>
     </div>
+    <div class="pill-row" id="sortRow"></div>
     <div class="cards" id="cardsWrap"></div>
     <div class="empty-msg" id="emptyState" style="display:none;">nothing here yet — add a recipe!</div>
   </div>
@@ -311,10 +357,17 @@
   <div class="empty-msg" id="cookedEmpty" style="display:none;">no meals logged yet — go cook something!</div>
 </div>
 
+<!-- STATS -->
+<div class="page" id="page-stats">
+  <div class="section-title" style="margin-top:0;">The numbers</div>
+  <div id="statsBody"></div>
+</div>
+
 <div class="bottomnav">
   <button class="navbtn active" id="nav-dashboard" onclick="switchTab('dashboard')"><span class="icon">🏠</span>Home</button>
   <button class="navbtn" id="nav-books" onclick="switchTab('books')"><span class="icon">📚</span>Books</button>
   <button class="navbtn" id="nav-cooked" onclick="switchTab('cooked')"><span class="icon">🍳</span>Cooked</button>
+  <button class="navbtn" id="nav-stats" onclick="switchTab('stats')"><span class="icon">📊</span>Stats</button>
 </div>
 
 <!-- Book Modal -->
@@ -327,6 +380,10 @@
     <div class="field"><label>title</label><input type="text" id="bookTitle"></div>
     <div class="field"><label>author</label><input type="text" id="bookAuthor"></div>
     <div class="field"><label>location</label><input type="text" id="bookLocation" placeholder="e.g. kitchen shelf"></div>
+    <div class="field checkrow">
+      <input type="checkbox" id="bookWishlist">
+      <label for="bookWishlist">on my wishlist (don't own it yet)</label>
+    </div>
     <div class="modal-actions">
       <button class="btn" onclick="closeModal('bookOverlay')">Cancel</button>
       <button class="btn pink" onclick="saveBook()">Save</button>
@@ -344,6 +401,10 @@
     <div class="field"><label>cookbook</label><select id="recipeBook"></select></div>
     <div class="field"><label>page</label><input type="text" id="recipePage" placeholder="e.g. 42"></div>
     <div class="field"><label>tags / keywords (comma separated)</label><input type="text" id="recipeTags" placeholder="e.g. pasta, quick, spicy"></div>
+    <div class="field checkrow">
+      <input type="checkbox" id="recipeFavorite">
+      <label for="recipeFavorite">⭐ mark as a favorite</label>
+    </div>
     <div class="modal-actions">
       <button class="btn" onclick="closeModal('recipeOverlay')">Cancel</button>
       <button class="btn pink" onclick="saveRecipe()">Save</button>
@@ -385,15 +446,24 @@
   const T_COOKED = 'CookBook_Cooked';
 
   const PALETTE = ['#FFC93C','#FF4D8D','#3A7BFF','#33B27A','#FF7A33','#8C6BF2'];
+  const MIN_DATE = '2026-01-01';
 
   let books = [];
   let recipes = [];
   let cookedByRecipe = {};
   let cookedAll = [];
   let currentTab = 'dashboard';
-  let currentISBN = 'all';
+  let currentISBN = 'all';       // 'all' = grid view, 'ALL' = flat all-recipes, 'FAV' = favorites, or an ISBN
   let searchTerm = '';
   let expandedRecipe = null;
+  let sortMode = 'name';         // name | rating | cooked | newest
+  let shelfView = 'owned';       // owned | wishlist
+  let tonightPick = null;
+  let tonightTagFilter = null;
+  const againState = {};
+
+  function isTrue(v){ return v === true || v === 'true' || v === 't'; }
+  function isFalseSet(v){ return v === false || v === 'false' || v === 'f'; }
 
   function toast(msg, isError){
     const t = document.createElement('div');
@@ -401,6 +471,14 @@
     t.textContent = msg;
     document.body.appendChild(t);
     setTimeout(()=> t.remove(), 3800);
+  }
+
+  function toggleTheme(){
+    document.body.classList.toggle('dark');
+    document.getElementById('themeToggle').textContent = document.body.classList.contains('dark') ? '☀️' : '🌙';
+  }
+  if(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches){
+    document.body.classList.add('dark');
   }
 
   function toggleSearch(){
@@ -418,6 +496,7 @@
     if(tab === 'dashboard') renderDashboard();
     if(tab === 'books') renderBooksTab();
     if(tab === 'cooked') renderCookedTab();
+    if(tab === 'stats') renderStats();
   }
 
   async function loadAll(){
@@ -448,13 +527,23 @@
     const idx = books.findIndex(b => String(b.ISBN) === String(isbn));
     return PALETTE[(idx < 0 ? 0 : idx) % PALETTE.length];
   }
+  function ratingAvg(list){
+    const withRatings = list.filter(c => c.Rating !== null && c.Rating !== undefined);
+    if(withRatings.length === 0) return null;
+    return withRatings.reduce((s,c)=>s+(Number(c.Rating)||0),0) / withRatings.length;
+  }
+  function allTags(){
+    const set = new Set();
+    recipes.forEach(r => (r.Tags||'').split(',').forEach(t => { const tt=t.trim(); if(tt) set.add(tt); }));
+    return Array.from(set).sort((a,b)=>a.localeCompare(b));
+  }
 
   // ---------------- DASHBOARD ----------------
   function renderDashboard(){
-    document.getElementById('statBooks').textContent = books.length;
+    document.getElementById('statBooks').textContent = books.filter(b=>!isTrue(b.Wishlist)).length;
     document.getElementById('statRecipes').textContent = recipes.length;
-    const avg = cookedAll.length ? (cookedAll.reduce((s,c)=>s+(Number(c.Rating)||0),0)/cookedAll.length).toFixed(1) : '–';
-    document.getElementById('statAvg').textContent = avg;
+    const avg = ratingAvg(cookedAll);
+    document.getElementById('statAvg').textContent = avg !== null ? avg.toFixed(1) : '–';
 
     renderTonight();
 
@@ -478,25 +567,44 @@
     }
   }
 
-  let tonightPick = null;
+  function getTonightPool(){
+    if(!tonightTagFilter) return recipes;
+    const f = tonightTagFilter.toLowerCase();
+    return recipes.filter(r => (r.Tags||'').toLowerCase().split(',').map(t=>t.trim()).includes(f));
+  }
+
   function renderTonight(){
+    const tagRow = document.getElementById('tonightTagRow');
+    const tags = allTags();
+    if(tags.length === 0){
+      tagRow.innerHTML = '';
+    } else {
+      tagRow.innerHTML = `<button class="pill-btn on-dark ${!tonightTagFilter?'active':''}" onclick="setTonightTag(null)">All</button>` +
+        tags.map(t => `<button class="pill-btn on-dark ${tonightTagFilter===t?'active':''}" onclick="setTonightTag('${escapeHtml(t)}')">${escapeHtml(t)}</button>`).join('');
+    }
+
     const body = document.getElementById('tonightBody');
-    if(recipes.length === 0){
-      body.innerHTML = `<div class="tonight-empty">Add a few recipes first!</div>`;
+    const pool = getTonightPool();
+    if(pool.length === 0){
+      body.innerHTML = `<div class="tonight-empty">${recipes.length===0 ? 'Add a few recipes first!' : 'No recipes with that tag yet.'}</div>`;
       return;
     }
-    if(!tonightPick) tonightPick = recipes[Math.floor(Math.random()*recipes.length)];
+    if(!tonightPick || !pool.some(r => r.RecipeID === tonightPick.RecipeID)){
+      tonightPick = pool[Math.floor(Math.random()*pool.length)];
+    }
     const book = bookById(tonightPick.ISBN);
     body.innerHTML = `
       <div class="dish">${escapeHtml(tonightPick.RecipeName)}</div>
       <div class="from">${escapeHtml(book ? book.Title : '')}${tonightPick.Page ? ' · p.'+escapeHtml(String(tonightPick.Page)) : ''}</div>
     `;
   }
+  function setTonightTag(tag){ tonightTagFilter = tag; tonightPick = null; renderTonight(); }
   function rollTonight(){
-    if(recipes.length === 0) return;
+    const pool = getTonightPool();
+    if(pool.length === 0) return;
     let pick;
-    do{ pick = recipes[Math.floor(Math.random()*recipes.length)]; }
-    while(recipes.length > 1 && tonightPick && pick.RecipeID === tonightPick.RecipeID);
+    do{ pick = pool[Math.floor(Math.random()*pool.length)]; }
+    while(pool.length > 1 && tonightPick && pick.RecipeID === tonightPick.RecipeID);
     tonightPick = pick;
     renderTonight();
   }
@@ -508,6 +616,7 @@
     document.getElementById('booksDetailWrap').style.display = showGrid ? 'none' : 'block';
 
     if(showGrid){
+      renderShelfTabs();
       renderBookGrid();
       return;
     }
@@ -522,26 +631,35 @@
       `;
     } else {
       const book = bookById(currentISBN);
+      let titleText = null;
+      if(currentISBN === 'ALL') titleText = '🍽 All recipes';
+      else if(currentISBN === 'FAV') titleText = '⭐ Favorites';
+      else if(book) titleText = book.Title;
+
       head.innerHTML = `
         <button class="btn small back-btn" onclick="selectBook('all')">‹ All books</button>
-        ${book ? `
+        ${titleText ? `
           <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
             <div>
-              <h2 style="font-size:20px;">${escapeHtml(book.Title)}</h2>
-              <div class="mono" style="font-size:11.5px; color:#777; margin-top:2px;">${escapeHtml(book.Author||'')}${book.Location ? ' · '+escapeHtml(book.Location) : ''}</div>
+              <h2 style="font-size:20px;">${escapeHtml(titleText)}</h2>
+              ${book ? `<div class="mono" style="font-size:11.5px; color:var(--muted); margin-top:2px;">${escapeHtml(book.Author||'')}${book.Location ? ' · '+escapeHtml(book.Location) : ''}</div>` : ''}
             </div>
-            <div style="display:flex; gap:6px; flex-shrink:0;">
-              <button class="btn small" onclick="openBookModal('${book.ISBN}')">Edit</button>
-              <button class="btn small danger" onclick="deleteBook('${book.ISBN}')">Delete</button>
-            </div>
+            ${book ? `
+              <div style="display:flex; gap:6px; flex-shrink:0;">
+                <button class="btn small" onclick="openBookModal('${book.ISBN}')">Edit</button>
+                <button class="btn small danger" onclick="deleteBook('${book.ISBN}')">Delete</button>
+              </div>
+            ` : ''}
           </div>
         ` : ''}
       `;
     }
 
-    let list = recipes;
-    if(!searchTerm.trim() && currentISBN !== 'all') list = list.filter(r => String(r.ISBN) === String(currentISBN));
-    if(searchTerm.trim()){
+    let list = recipes.slice();
+    if(!searchTerm.trim()){
+      if(currentISBN === 'FAV') list = list.filter(r => isTrue(r.IsFavorite));
+      else if(currentISBN !== 'ALL') list = list.filter(r => String(r.ISBN) === String(currentISBN));
+    } else {
       const q = searchTerm.trim().toLowerCase();
       list = list.filter(r =>
         (r.RecipeName||'').toLowerCase().includes(q) ||
@@ -550,17 +668,37 @@
       );
     }
 
+    // sort
+    if(sortMode === 'name'){
+      list.sort((a,b) => (a.RecipeName||'').localeCompare(b.RecipeName||''));
+    } else if(sortMode === 'rating'){
+      const avg = r => { const v = ratingAvg(cookedByRecipe[r.RecipeID]||[]); return v === null ? -1 : v; };
+      list.sort((a,b) => avg(b) - avg(a));
+    } else if(sortMode === 'cooked'){
+      const cnt = r => (cookedByRecipe[r.RecipeID]||[]).length;
+      list.sort((a,b) => cnt(b) - cnt(a));
+    } else if(sortMode === 'newest'){
+      list.sort((a,b) => Number(b.RecipeID) - Number(a.RecipeID));
+    }
+
+    document.getElementById('sortRow').innerHTML = [
+      {id:'name', label:'A–Z'},
+      {id:'rating', label:'⭐ Top rated'},
+      {id:'cooked', label:'🔥 Most cooked'},
+      {id:'newest', label:'🆕 Newest'}
+    ].map(o => `<button class="pill-btn ${sortMode===o.id?'active':''}" onclick="setSortMode('${o.id}')">${o.label}</button>`).join('');
+
     const wrap = document.getElementById('cardsWrap');
     const empty = document.getElementById('emptyState');
     wrap.innerHTML = '';
     if(list.length === 0){ empty.style.display = 'block'; return; }
     empty.style.display = 'none';
 
-    const showBookTag = searchTerm.trim() || currentISBN === 'all';
+    const showBookTag = !!searchTerm.trim() || currentISBN === 'ALL' || currentISBN === 'FAV';
     list.forEach(recipe => {
       const book = bookById(recipe.ISBN);
       const cooked = cookedByRecipe[recipe.RecipeID] || [];
-      const avgRating = cooked.length ? (cooked.reduce((s,c)=>s+(Number(c.Rating)||0),0)/cooked.length).toFixed(1) : null;
+      const avg = ratingAvg(cooked);
       const pageLabel = recipe.Page ? `p. ${escapeHtml(String(recipe.Page))}` : 'no page';
 
       const card = document.createElement('div');
@@ -573,7 +711,8 @@
             ${recipe.Tags ? `<div class="card-tags">${escapeHtml(recipe.Tags)}</div>` : ''}
           </div>
           <div class="card-right">
-            ${cooked.length ? `<span class="mono" style="font-size:11px; color:#777;">🔥${cooked.length} · ${avgRating}/10</span>` : ''}
+            ${cooked.length ? `<span class="mono" style="font-size:11px; color:var(--muted);">🔥${cooked.length}${avg!==null? ' · '+avg.toFixed(1)+'/10':''}</span>` : ''}
+            <button class="fav-btn" onclick="toggleFavorite(event, ${recipe.RecipeID})">${isTrue(recipe.IsFavorite) ? '⭐' : '☆'}</button>
             <span class="page-pill ${recipe.Page ? '' : 'none'}">${pageLabel}</span>
             <span class="chevron">›</span>
           </div>
@@ -585,21 +724,63 @@
     });
   }
 
+  function setSortMode(mode){ sortMode = mode; renderBooksTab(); }
+
+  function renderShelfTabs(){
+    document.getElementById('shelfViewTabs').innerHTML = `
+      <button class="pill-btn ${shelfView==='owned'?'active':''}" onclick="setShelfView('owned')">📚 My shelf</button>
+      <button class="pill-btn ${shelfView==='wishlist'?'active':''}" onclick="setShelfView('wishlist')">🛒 Wishlist</button>
+    `;
+  }
+  function setShelfView(v){ shelfView = v; renderBookGrid(); }
+
   function renderBookGrid(){
     const wrap = document.getElementById('bookGrid');
-    wrap.innerHTML = books.map((b,i) => {
-      const count = recipes.filter(r => String(r.ISBN) === String(b.ISBN)).length;
-      const color = PALETTE[i % PALETTE.length];
-      return `
-        <div class="book-tile pressable" style="background:${color};" onclick="selectBook('${b.ISBN}')">
-          <div>
-            <div class="book-tile-title">${escapeHtml(b.Title)}</div>
-            <div class="book-tile-sub">${escapeHtml(b.Author||'')}</div>
-          </div>
-          <div class="book-tile-count">${count} recipe${count===1?'':'s'}</div>
+    if(shelfView === 'owned'){
+      const owned = books.filter(b => !isTrue(b.Wishlist));
+      const favCount = recipes.filter(r => isTrue(r.IsFavorite)).length;
+      let html = `
+        <div class="book-tile pressable" style="background:#161616;" onclick="selectBook('ALL')">
+          <div><div class="book-tile-title">🍽 All recipes</div><div class="book-tile-sub">everything, unsorted</div></div>
+          <div class="book-tile-count">${recipes.length} total</div>
+        </div>
+        <div class="book-tile pressable" style="background:${PALETTE[0]}; color:#161616;" onclick="selectBook('FAV')">
+          <div><div class="book-tile-title" style="color:#161616;">⭐ Favorites</div><div class="book-tile-sub" style="color:#161616; opacity:0.75;">your go-tos</div></div>
+          <div class="book-tile-count" style="background:rgba(0,0,0,0.12); color:#161616;">${favCount} starred</div>
         </div>
       `;
-    }).join('') + `<div class="book-tile add-tile pressable" onclick="openBookModal()">+ Add<br>cookbook</div>`;
+      html += owned.map((b) => {
+        const count = recipes.filter(r => String(r.ISBN) === String(b.ISBN)).length;
+        const color = bookColor(b.ISBN);
+        return `
+          <div class="book-tile pressable" style="background:${color};" onclick="selectBook('${b.ISBN}')">
+            <div>
+              <div class="book-tile-title">${escapeHtml(b.Title)}</div>
+              <div class="book-tile-sub">${escapeHtml(b.Author||'')}</div>
+            </div>
+            <div class="book-tile-count">${count} recipe${count===1?'':'s'}</div>
+          </div>
+        `;
+      }).join('');
+      html += `<div class="book-tile add-tile pressable" onclick="openBookModal()">+ Add<br>cookbook</div>`;
+      wrap.innerHTML = html;
+    } else {
+      const wishlist = books.filter(b => isTrue(b.Wishlist));
+      let html = wishlist.map((b) => {
+        const color = bookColor(b.ISBN);
+        return `
+          <div class="book-tile pressable" style="background:${color};" onclick="openBookModal('${b.ISBN}')">
+            <div>
+              <div class="book-tile-title">${escapeHtml(b.Title)}</div>
+              <div class="book-tile-sub">${escapeHtml(b.Author||'')}</div>
+            </div>
+            <div class="book-tile-count">🛒 wishlist</div>
+          </div>
+        `;
+      }).join('');
+      html += `<div class="book-tile add-tile pressable" onclick="openBookModal(null, true)">+ Add to<br>wishlist</div>`;
+      wrap.innerHTML = html;
+    }
   }
 
   function clearSearch(){
@@ -610,6 +791,16 @@
 
   function selectBook(isbn){ currentISBN = isbn; expandedRecipe = null; renderBooksTab(); }
   function toggleExpand(id){ expandedRecipe = expandedRecipe === id ? null : id; renderBooksTab(); }
+
+  async function toggleFavorite(e, recipeId){
+    e.stopPropagation();
+    const recipe = recipeById(recipeId);
+    if(!recipe) return;
+    const newVal = !isTrue(recipe.IsFavorite);
+    const {error} = await sb.from(T_RECIPE).update({IsFavorite:newVal}).eq('RecipeID', recipeId);
+    if(error){ toast('Could not update favorite: ' + error.message, true); return; }
+    await loadAll();
+  }
 
   function renderCardBody(recipeId){
     const el = document.getElementById(`body-${recipeId}`);
@@ -636,7 +827,7 @@
         <input type="text" placeholder="comments" id="newComments-${recipeId}" style="flex:1; min-width:120px;">
       </div>
       <div class="inline-form">
-        <span class="mono" style="font-size:11px; color:#999;">cook again?</span>
+        <span class="mono" style="font-size:11px; color:var(--muted);">cook again?</span>
         <div class="again-toggle" id="newAgain-${recipeId}">
           <button type="button" class="again-btn yes" onclick="setAgainToggle('newAgain-${recipeId}', true)">👍</button>
           <button type="button" class="again-btn no" onclick="setAgainToggle('newAgain-${recipeId}', false)">👎</button>
@@ -666,7 +857,7 @@
               <div class="name">${escapeHtml(recipe ? recipe.RecipeName : 'Unknown recipe')}</div>
               <div class="book">${escapeHtml(book ? book.Title : '')}</div>
             </div>
-            <div class="rating-chip" style="background:${bookColor(book?.ISBN)};">${formatRating(c.Rating)}</div>
+            <div class="rating-chip" style="background:${bookColor(book?.ISBN)}; color:#fff;">${formatRating(c.Rating)}</div>
           </div>
           ${c.Comments ? `<div class="cooked-full-comment">${escapeHtml(c.Comments)}</div>` : ''}
           <div class="cooked-full-bottom">
@@ -679,17 +870,6 @@
         </div>
       `;
     }).join('');
-  }
-
-  const againState = {}; // toggleId -> true/false/undefined
-
-  function setAgainToggle(toggleId, value){
-    againState[toggleId] = value;
-    const wrap = document.getElementById(toggleId);
-    if(!wrap) return;
-    wrap.querySelectorAll('.again-btn').forEach(b => b.classList.remove('on'));
-    const btn = wrap.querySelector(value ? '.again-btn.yes' : '.again-btn.no');
-    if(btn) btn.classList.add('on');
   }
 
   function openCookedModal(cookedId){
@@ -710,8 +890,8 @@
     document.getElementById('cookedComments').value = entry ? (entry.Comments || '') : '';
 
     document.getElementById('cookedAgainToggle').querySelectorAll('.again-btn').forEach(b => b.classList.remove('on'));
-    if(entry && (entry.CookAgain === true || entry.CookAgain === false)){
-      setAgainToggle('cookedAgainToggle', entry.CookAgain);
+    if(entry && (entry.CookAgain === true || entry.CookAgain === false || isTrue(entry.CookAgain) || isFalseSet(entry.CookAgain))){
+      setAgainToggle('cookedAgainToggle', isTrue(entry.CookAgain));
     } else {
       delete againState['cookedAgainToggle'];
     }
@@ -748,7 +928,7 @@
   }
 
   // ---------------- Book CRUD ----------------
-  function openBookModal(isbn){
+  function openBookModal(isbn, forceWishlist){
     document.getElementById('bookModalTitle').textContent = isbn ? 'Edit cookbook' : 'Add a cookbook';
     const book = isbn ? bookById(isbn) : null;
     document.getElementById('bookOriginalISBN').value = isbn || '';
@@ -757,6 +937,7 @@
     document.getElementById('bookTitle').value = book ? book.Title || '' : '';
     document.getElementById('bookAuthor').value = book ? book.Author || '' : '';
     document.getElementById('bookLocation').value = book ? book.Location || '' : '';
+    document.getElementById('bookWishlist').checked = book ? isTrue(book.Wishlist) : !!forceWishlist;
     document.getElementById('bookOverlay').classList.add('open');
   }
 
@@ -766,12 +947,13 @@
     const title = document.getElementById('bookTitle').value.trim();
     const author = document.getElementById('bookAuthor').value.trim();
     const location = document.getElementById('bookLocation').value.trim();
+    const wishlist = document.getElementById('bookWishlist').checked;
     if(!isbn || !title){ toast('ISBN and title are required.', true); return; }
     let error;
     if(original){
-      ({error} = await sb.from(T_BOOK).update({Title:title, Author:author, Location:location}).eq('ISBN', original));
+      ({error} = await sb.from(T_BOOK).update({Title:title, Author:author, Location:location, Wishlist:wishlist}).eq('ISBN', original));
     } else {
-      ({error} = await sb.from(T_BOOK).insert({ISBN:isbn, Title:title, Author:author, Location:location}));
+      ({error} = await sb.from(T_BOOK).insert({ISBN:isbn, Title:title, Author:author, Location:location, Wishlist:wishlist}));
     }
     if(error){ toast('Could not save book: ' + error.message, true); return; }
     closeModal('bookOverlay');
@@ -800,9 +982,10 @@
     document.getElementById('recipeName').value = recipe ? recipe.RecipeName || '' : '';
     document.getElementById('recipePage').value = recipe ? recipe.Page || '' : '';
     document.getElementById('recipeTags').value = recipe ? recipe.Tags || '' : '';
+    document.getElementById('recipeFavorite').checked = recipe ? isTrue(recipe.IsFavorite) : false;
     const select = document.getElementById('recipeBook');
-    select.innerHTML = books.map(b => `<option value="${b.ISBN}">${escapeHtml(b.Title)}</option>`).join('');
-    const preselect = recipe ? recipe.ISBN : (currentISBN !== 'all' ? currentISBN : (books[0]?.ISBN));
+    select.innerHTML = books.filter(b=>!isTrue(b.Wishlist)).map(b => `<option value="${b.ISBN}">${escapeHtml(b.Title)}</option>`).join('');
+    const preselect = recipe ? recipe.ISBN : ((currentISBN !== 'all' && currentISBN !== 'ALL' && currentISBN !== 'FAV') ? currentISBN : (books.find(b=>!isTrue(b.Wishlist))?.ISBN));
     if(preselect) select.value = preselect;
     document.getElementById('recipeOverlay').classList.add('open');
   }
@@ -813,12 +996,13 @@
     const isbn = document.getElementById('recipeBook').value;
     const page = document.getElementById('recipePage').value.trim();
     const tags = document.getElementById('recipeTags').value.trim();
+    const favorite = document.getElementById('recipeFavorite').checked;
     if(!name || !isbn){ toast('Recipe name and cookbook are required.', true); return; }
     let error;
     if(original){
-      ({error} = await sb.from(T_RECIPE).update({RecipeName:name, ISBN:isbn, Page:page || null, Tags: tags || null}).eq('RecipeID', original));
+      ({error} = await sb.from(T_RECIPE).update({RecipeName:name, ISBN:isbn, Page:page || null, Tags: tags || null, IsFavorite: favorite}).eq('RecipeID', original));
     } else {
-      ({error} = await sb.from(T_RECIPE).insert({RecipeName:name, ISBN:isbn, Page:page || null, Tags: tags || null}));
+      ({error} = await sb.from(T_RECIPE).insert({RecipeName:name, ISBN:isbn, Page:page || null, Tags: tags || null, IsFavorite: favorite}));
     }
     if(error){ toast('Could not save recipe: ' + error.message, true); return; }
     closeModal('recipeOverlay');
@@ -866,20 +1050,104 @@
     switchTab(wasTab);
   }
 
+  // ---------------- STATS TAB ----------------
+  function renderStats(){
+    const wrap = document.getElementById('statsBody');
+    if(recipes.length === 0){
+      wrap.innerHTML = `<div class="empty-msg">add some recipes and cook a few to see stats here!</div>`;
+      return;
+    }
+
+    const neverCooked = recipes.filter(r => !(cookedByRecipe[r.RecipeID]||[]).length).length;
+
+    // most cooked / top rated recipe
+    let mostCookedRecipe = null, mostCookedCount = 0;
+    let topRatedRecipe = null, topRatedAvg = -1;
+    recipes.forEach(r => {
+      const c = cookedByRecipe[r.RecipeID] || [];
+      if(c.length > mostCookedCount){ mostCookedCount = c.length; mostCookedRecipe = r; }
+      const avg = ratingAvg(c);
+      if(avg !== null && avg > topRatedAvg){ topRatedAvg = avg; topRatedRecipe = r; }
+    });
+
+    // per-book aggregates
+    const bookAgg = {};
+    cookedAll.forEach(c => {
+      const recipe = recipeById(c.RecipeID);
+      if(!recipe) return;
+      const isbn = recipe.ISBN;
+      if(!bookAgg[isbn]) bookAgg[isbn] = {count:0, ratingSum:0, ratingCount:0};
+      bookAgg[isbn].count++;
+      if(c.Rating !== null && c.Rating !== undefined){ bookAgg[isbn].ratingSum += Number(c.Rating)||0; bookAgg[isbn].ratingCount++; }
+    });
+    let mostCookedBook = null, mostCookedBookCount = 0;
+    let topRatedBook = null, topRatedBookAvg = -1;
+    Object.keys(bookAgg).forEach(isbn => {
+      const agg = bookAgg[isbn];
+      if(agg.count > mostCookedBookCount){ mostCookedBookCount = agg.count; mostCookedBook = bookById(isbn); }
+      if(agg.ratingCount > 0){
+        const avg = agg.ratingSum / agg.ratingCount;
+        if(avg > topRatedBookAvg){ topRatedBookAvg = avg; topRatedBook = bookById(isbn); }
+      }
+    });
+
+    const yesCount = cookedAll.filter(c => isTrue(c.CookAgain)).length;
+    const noCount = cookedAll.filter(c => isFalseSet(c.CookAgain)).length;
+    const answered = yesCount + noCount;
+    const pct = answered ? Math.round((yesCount/answered)*100) : null;
+
+    function row(emoji, title, sub, chip){
+      return `
+        <div class="recent-item">
+          <div>
+            <div class="name">${emoji} ${escapeHtml(title)}</div>
+            <div class="sub">${escapeHtml(sub)}</div>
+          </div>
+          ${chip ? `<div class="rating-chip">${escapeHtml(chip)}</div>` : ''}
+        </div>
+      `;
+    }
+
+    let html = `
+      <div class="stats-row" style="grid-template-columns:repeat(2,1fr); margin-bottom:22px;">
+        <div class="stat-card plain"><div class="num">${cookedAll.length}</div><div class="label">meals logged</div></div>
+        <div class="stat-card plain"><div class="num">${neverCooked}</div><div class="label">never cooked</div></div>
+      </div>
+      <div class="section-title" style="margin-top:0;">Hall of fame</div>
+    `;
+    html += mostCookedRecipe
+      ? row('🔥', mostCookedRecipe.RecipeName, 'most-cooked recipe', `${mostCookedCount}×`)
+      : `<div class="empty-msg">cook something to unlock this</div>`;
+    html += topRatedRecipe
+      ? row('🏅', topRatedRecipe.RecipeName, 'top-rated recipe', `${topRatedAvg.toFixed(1)}/10`)
+      : '';
+    html += mostCookedBook
+      ? row('📖', mostCookedBook.Title, 'most-cooked book', `${mostCookedBookCount}×`)
+      : '';
+    html += topRatedBook
+      ? row('🌟', topRatedBook.Title, 'top-rated book', `${topRatedBookAvg.toFixed(1)}/10`)
+      : '';
+
+    html += `<div class="section-title">Would you cook it again?</div>`;
+    html += pct !== null
+      ? `<div class="empty-msg" style="background:var(--card); color:var(--text);">👍 ${pct}% yes (${yesCount} of ${answered} answered)</div>`
+      : `<div class="empty-msg">start answering "cook again?" to see this</div>`;
+
+    wrap.innerHTML = html;
+  }
+
   // ---------------- Helpers ----------------
   function closeModal(id){ document.getElementById(id).classList.remove('open'); }
   function escapeHtml(str){
     return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
   }
   function todayStr(){ return new Date().toISOString().slice(0,10); }
-  const MIN_DATE = '2026-01-01';
 
   function formatRating(val){
     if(val === null || val === undefined || val === '') return '–';
     return `${val}/10`;
   }
 
-  // Returns a numeric rating in [0,10], or null if left blank, or false if invalid (and shows a toast)
   function validateRating(raw){
     if(raw === '' || raw === null || raw === undefined) return null;
     const n = Number(raw);
@@ -890,9 +1158,18 @@
     return n;
   }
 
+  function setAgainToggle(toggleId, value){
+    againState[toggleId] = value;
+    const wrap = document.getElementById(toggleId);
+    if(!wrap) return;
+    wrap.querySelectorAll('.again-btn').forEach(b => b.classList.remove('on'));
+    const btn = wrap.querySelector(value ? '.again-btn.yes' : '.again-btn.no');
+    if(btn) btn.classList.add('on');
+  }
+
   function againBadgeHtml(val){
-    if(val === true || val === 'true' || val === 't') return `<span class="again-badge yes">👍 again</span>`;
-    if(val === false || val === 'false' || val === 'f') return `<span class="again-badge no">👎 skip</span>`;
+    if(isTrue(val)) return `<span class="again-badge yes">👍 again</span>`;
+    if(isFalseSet(val)) return `<span class="again-badge no">👎 skip</span>`;
     return '';
   }
 

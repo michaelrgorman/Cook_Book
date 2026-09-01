@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="100" fill="#161616"/>
+  <circle cx="256" cy="256" r="188" fill="#FFC93C" stroke="#161616" stroke-width="14"/>
+  <text x="256" y="298" font-size="200" text-anchor="middle" font-family="Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji, sans-serif">🍝</text>
+</svg>

@@ -1,0 +1,11 @@
+{
+  "name": "Cook This! – Recipe Index",
+  "short_name": "Cook This!",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#FFF6E9",
+  "theme_color": "#161616",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
