@@ -355,7 +355,8 @@
 <div class="overlay" id="cookedOverlay">
   <div class="modal">
     <div class="modal-handle"></div>
-    <h3>Log a cook</h3>
+    <h3 id="cookedModalTitle">Log a cook</h3>
+    <input type="hidden" id="cookedOriginalID">
     <div class="field"><label>recipe</label><select id="cookedRecipeSelect"></select></div>
     <div class="field"><label>date cooked</label><input type="date" id="cookedDate" min="2026-01-01"></div>
     <div class="field"><label>rating (0–10)</label><input type="number" step="0.1" min="0" max="10" id="cookedRating"></div>
@@ -621,6 +622,7 @@
             <div class="left"><span class="date">${escapeHtml(c.DateCooked||'')}</span>${escapeHtml(c.Comments||'')} ${againBadgeHtml(c.CookAgain)}</div>
             <div style="display:flex; align-items:center; gap:8px;">
               <span class="mono" style="font-weight:700; color:var(--green);">${formatRating(c.Rating)}</span>
+              <button class="btn small" onclick="openCookedModal(${c.CookedID})">Edit</button>
               <button class="btn small danger" onclick="deleteCooked(${c.CookedID}, ${recipeId})">✕</button>
             </div>
           </div>
@@ -669,7 +671,10 @@
           ${c.Comments ? `<div class="cooked-full-comment">${escapeHtml(c.Comments)}</div>` : ''}
           <div class="cooked-full-bottom">
             <span class="date">${escapeHtml(c.DateCooked||'')} ${againBadgeHtml(c.CookAgain)}</span>
-            <button class="btn small danger" onclick="deleteCooked(${c.CookedID}, ${c.RecipeID})">Remove</button>
+            <div style="display:flex; gap:6px;">
+              <button class="btn small" onclick="openCookedModal(${c.CookedID})">Edit</button>
+              <button class="btn small danger" onclick="deleteCooked(${c.CookedID}, ${c.RecipeID})">Remove</button>
+            </div>
           </div>
         </div>
       `;
@@ -687,21 +692,34 @@
     if(btn) btn.classList.add('on');
   }
 
-  function openCookedModal(){
+  function openCookedModal(cookedId){
+    const entry = cookedId ? cookedAll.find(c => String(c.CookedID) === String(cookedId)) : null;
+    document.getElementById('cookedModalTitle').textContent = entry ? 'Edit cook' : 'Log a cook';
+    document.getElementById('cookedOriginalID').value = cookedId || '';
+
     const sel = document.getElementById('cookedRecipeSelect');
     sel.innerHTML = recipes.map(r => `<option value="${r.RecipeID}">${escapeHtml(r.RecipeName)}</option>`).join('');
+    sel.disabled = !!entry;
+    if(entry) sel.value = entry.RecipeID;
+
     const dateInput = document.getElementById('cookedDate');
     dateInput.min = MIN_DATE;
     dateInput.max = todayStr();
-    dateInput.value = todayStr();
-    document.getElementById('cookedRating').value = '';
-    document.getElementById('cookedComments').value = '';
-    delete againState['cookedAgainToggle'];
+    dateInput.value = entry ? entry.DateCooked : todayStr();
+    document.getElementById('cookedRating').value = entry ? (entry.Rating ?? '') : '';
+    document.getElementById('cookedComments').value = entry ? (entry.Comments || '') : '';
+
     document.getElementById('cookedAgainToggle').querySelectorAll('.again-btn').forEach(b => b.classList.remove('on'));
+    if(entry && (entry.CookAgain === true || entry.CookAgain === false)){
+      setAgainToggle('cookedAgainToggle', entry.CookAgain);
+    } else {
+      delete againState['cookedAgainToggle'];
+    }
     document.getElementById('cookedOverlay').classList.add('open');
   }
 
   async function saveStandaloneCooked(){
+    const originalId = document.getElementById('cookedOriginalID').value;
     const recipeId = document.getElementById('cookedRecipeSelect').value;
     const date = document.getElementById('cookedDate').value;
     const comments = document.getElementById('cookedComments').value.trim();
@@ -711,14 +729,22 @@
     const rating = validateRating(document.getElementById('cookedRating').value);
     if(rating === false) return;
     const again = 'cookedAgainToggle' in againState ? againState['cookedAgainToggle'] : null;
-    const {error} = await sb.from(T_COOKED).insert({
-      RecipeID: recipeId, DateCooked: date, Comments: comments, Rating: rating ?? 0, CookAgain: again
-    });
-    if(error){ toast('Could not log: ' + error.message, true); return; }
+
+    let error;
+    if(originalId){
+      ({error} = await sb.from(T_COOKED).update({
+        DateCooked: date, Comments: comments, Rating: rating ?? 0, CookAgain: again
+      }).eq('CookedID', originalId));
+    } else {
+      ({error} = await sb.from(T_COOKED).insert({
+        RecipeID: recipeId, DateCooked: date, Comments: comments, Rating: rating ?? 0, CookAgain: again
+      }));
+    }
+    if(error){ toast('Could not save: ' + error.message, true); return; }
     closeModal('cookedOverlay');
-    toast('Logged!');
+    toast(originalId ? 'Updated!' : 'Logged!');
     await loadAll();
-    switchTab('cooked');
+    switchTab(currentTab === 'books' ? 'books' : 'cooked');
   }
 
   // ---------------- Book CRUD ----------------
