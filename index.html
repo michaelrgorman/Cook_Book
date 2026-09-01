@@ -660,12 +660,11 @@
       if(currentISBN === 'FAV') list = list.filter(r => isTrue(r.IsFavorite));
       else if(currentISBN !== 'ALL') list = list.filter(r => String(r.ISBN) === String(currentISBN));
     } else {
-      const q = searchTerm.trim().toLowerCase();
-      list = list.filter(r =>
-        (r.RecipeName||'').toLowerCase().includes(q) ||
-        String(r.Page||'').toLowerCase().includes(q) ||
-        (r.Tags||'').toLowerCase().includes(q)
-      );
+      const words = searchTerm.trim().toLowerCase().split(/\s+/).filter(Boolean);
+      list = list.filter(r => {
+        const haystack = `${r.RecipeName||''} ${r.Page||''} ${r.Tags||''}`.toLowerCase();
+        return words.every(w => haystack.includes(w));
+      });
     }
 
     // sort
