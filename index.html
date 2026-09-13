@@ -292,16 +292,48 @@
   .toast.error{ background:#D8425A; }
 
   /* ---------- Bake tab ---------- */
-  .flour-row{ display:flex; gap:8px; align-items:center; margin-bottom:8px; }
-  .flour-row select{ flex:1.4; padding:9px 10px; border-radius:10px; border:2px solid var(--ink); font-family:'Fredoka', sans-serif; font-size:14px; }
-  .flour-row input{ width:70px; padding:9px 10px; border-radius:10px; border:2px solid var(--ink); font-family:'Space Mono', monospace; font-size:13px; }
-  .flour-row .pct-sign{ font-family:'Space Mono', monospace; font-size:12px; color:var(--muted); }
-  .flour-row .remove-x{ background:none; border:none; color:#D8425A; font-size:16px; cursor:pointer; padding:4px; }
-  .extra-chip{
-    display:inline-flex; align-items:center; gap:6px; background: var(--card); border:2px solid var(--ink);
-    border-radius:20px; padding:6px 10px; margin:0 6px 6px 0; font-family:'Space Mono', monospace; font-size:11.5px;
+  .flour-row{
+    display:flex; gap:8px; align-items:center; margin-bottom:8px;
+    background: var(--card); border-radius:14px; padding:10px 12px; border: 2px solid #e5e0d3;
   }
-  .extra-chip button{ background:none; border:none; color:#D8425A; font-weight:700; cursor:pointer; padding:0; font-size:13px; }
+  .flour-row select{ flex:1.4; padding:8px 9px; border-radius:10px; border:2px solid var(--card-line, #e5e0d3); font-family:'Fredoka', sans-serif; font-size:14px; background:#fff; }
+  .flour-row input{ width:66px; padding:8px 9px; border-radius:10px; border:2px solid #e5e0d3; font-family:'Space Mono', monospace; font-size:13px; text-align:right; }
+  .flour-row .pct-sign{ font-family:'Space Mono', monospace; font-size:12px; color:var(--muted); }
+  .flour-row .remove-x{ background:none; border:none; color:#D8425A; font-size:17px; cursor:pointer; padding:2px 4px; }
+  .extra-add-row{
+    display:flex; gap:8px; margin-bottom:12px; background: var(--card); border-radius:14px; padding:10px 12px; border: 2px solid #e5e0d3;
+  }
+  .extra-add-row select{ flex:1.4; padding:8px 9px; border-radius:10px; border:2px solid #e5e0d3; font-family:'Fredoka', sans-serif; font-size:14px; background:#fff; }
+  .extra-add-row input{ width:80px; padding:8px 9px; border-radius:10px; border:2px solid #e5e0d3; font-family:'Space Mono', monospace; font-size:13px; text-align:right; }
+  .extra-chip{
+    display:inline-flex; align-items:center; gap:7px; background: var(--card); border:2px solid var(--ink);
+    border-radius:20px; padding:7px 8px 7px 12px; margin:0 6px 6px 0; font-family:'Space Mono', monospace; font-size:12px;
+  }
+  .extra-chip .grams{ font-weight:700; }
+  .extra-chip button{
+    background: var(--ink); color:#fff; border:none; border-radius:50%; width:18px; height:18px;
+    font-weight:700; cursor:pointer; padding:0; font-size:11px; line-height:1; flex-shrink:0;
+  }
+  .calc-top-row{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:18px; }
+  .calc-top-card{
+    background: var(--yellow); border-radius:16px; padding:12px 14px; border: var(--line) solid var(--ink);
+  }
+  .calc-top-card.hydration{ background: var(--blue); color:#fff; }
+  .calc-top-card label{
+    display:block; font-family:'Space Mono', monospace; font-size:10px; margin-bottom:6px; text-transform:lowercase;
+  }
+  .calc-top-card.hydration label{ color:#dbe8ff; }
+  .calc-top-card .top-input-row{ display:flex; align-items:baseline; gap:4px; }
+  .calc-top-card input{
+    width:100%; background:transparent; border:none; font-family:'Fredoka', sans-serif; font-weight:700;
+    font-size:26px; color:#161616; padding:0; -moz-appearance:textfield;
+  }
+  .calc-top-card.hydration input{ color:#fff; }
+  .calc-top-card .unit{ font-family:'Space Mono', monospace; font-size:14px; opacity:0.8; }
+  .photo-tip{ font-family:'Space Mono', monospace; font-size:10.5px; color: var(--muted); margin-top:-6px; margin-bottom:12px; }
+  .photo-fail{ font-family:'Space Mono', monospace; font-size:11px; color:#D8425A; margin-top:8px; }
+  .bake-detail-row{ display:flex; gap:8px; margin-top:6px; font-size:13.5px; }
+  .bake-detail-row .k{ font-family:'Space Mono', monospace; font-size:10.5px; color: var(--muted); min-width:70px; flex-shrink:0; padding-top:2px; }
   .calc-out-row{
     display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px dashed #e5e0d3; font-size:14px;
   }
@@ -395,29 +427,42 @@
   <div id="bakeCalcWrap">
     <div class="section-title" style="margin-top:0;">🧮 Dough calculator</div>
 
-    <div class="field"><label>total flour (g) — this is your 100% baseline</label><input type="number" id="calcTotalFlour" value="500" min="1"></div>
-    <div class="field"><label>overall hydration %</label><input type="number" id="calcHydration" value="75" min="0"></div>
-    <div class="field"><label>salt %</label><input type="number" id="calcSalt" value="2" step="0.1" min="0"></div>
+    <div class="calc-top-row">
+      <div class="calc-top-card">
+        <label>total flour — 100% baseline</label>
+        <div class="top-input-row"><input type="number" id="calcTotalFlour" value="500" min="1"><span class="unit">g</span></div>
+      </div>
+      <div class="calc-top-card hydration">
+        <label>overall hydration</label>
+        <div class="top-input-row"><input type="number" id="calcHydration" value="75" min="0"><span class="unit">%</span></div>
+      </div>
+    </div>
+
+    <div class="section-title" style="font-size:16px; margin-top:0;">The starter</div>
+    <div class="field"><label>white flour (g)</label><input type="number" id="calcStarterWhite" value="40" min="0"></div>
+    <div class="field"><label>wholemeal flour (g)</label><input type="number" id="calcStarterWholemeal" value="10" min="0"></div>
+    <div class="field"><label>water (g)</label><input type="number" id="calcStarterWater" value="50" min="0"></div>
 
     <div class="section-title" style="font-size:16px;">The levain</div>
     <div class="field"><label>levain flour — % of total flour</label><input type="number" id="calcLevainFlourPct" value="20" min="0" max="100"></div>
     <div class="field"><label>levain hydration %</label><input type="number" id="calcLevainHydration" value="100" min="0"></div>
-    <div class="field"><label>starter seed — % of levain flour (inoculation)</label><input type="number" id="calcSeedPct" value="20" min="0"></div>
+    <div class="empty-msg" id="seedFromStarterNote" style="text-align:left; margin-bottom:12px;"></div>
 
-    <div class="section-title" style="font-size:16px;">Autolyse</div>
+    <div class="section-title" style="font-size:16px;">Autolyse & salt</div>
     <div class="field"><label>autolyse — % of main dough flour (0 = skip)</label><input type="number" id="calcAutolysePct" value="0" min="0" max="100"></div>
+    <div class="field"><label>salt % (mixed in at the autolyse)</label><input type="number" id="calcSalt" value="2" step="0.1" min="0"></div>
 
     <div class="section-title" style="font-size:16px;">Flour blend</div>
     <div id="flourTypeRows"></div>
     <button class="btn small pop-sm pressable" onclick="addFlourTypeRow()">+ Add flour type</button>
 
     <div class="section-title" style="font-size:16px;">Extras</div>
-    <div class="inline-form">
+    <div class="extra-add-row">
       <select id="extraPreset">
-        <option>Seeds</option><option>Olives</option><option>Cheese</option><option>Herbs</option>
-        <option>Honey</option><option>Walnuts</option><option>Dried fruit</option><option>Oil</option><option>Other</option>
+        <option>🌾 Seeds</option><option>🫒 Olives</option><option>🧀 Cheese</option><option>🌿 Herbs</option>
+        <option>🍯 Honey</option><option>🌰 Walnuts</option><option>🍇 Dried fruit</option><option>🫙 Oil</option><option>➕ Other</option>
       </select>
-      <input type="number" id="extraGrams" placeholder="grams" style="width:90px;">
+      <input type="number" id="extraGrams" placeholder="grams">
       <button class="btn small green" onclick="addExtra()">+ Add</button>
     </div>
     <div id="extrasList" style="margin-bottom:14px;"></div>
@@ -539,7 +584,8 @@
     <div class="field"><label>oven temp (°C)</label><input type="number" id="bakeLogOvenTemp" step="1"></div>
     <div class="field"><label>bake time (minutes)</label><input type="number" id="bakeLogBakeMinutes" step="1" min="0"></div>
     <div class="field"><label>steam method</label><input type="text" id="bakeLogSteamMethod" placeholder="e.g. dutch oven, ice cubes, tray of water"></div>
-    <div class="field"><label>photo link (optional)</label><input type="text" id="bakeLogPhotoURL" placeholder="paste a photo URL"></div>
+    <div class="field"><label>photo link (optional)</label><input type="text" id="bakeLogPhotoURL" placeholder="paste a direct image URL"></div>
+    <div class="photo-tip">tip: Google Photos "share" links usually won't display here — open the photo, then right-click → "copy image address" for a direct link (it should start with lh3.googleusercontent.com)</div>
     <div class="field"><label>rating (0–10)</label><input type="number" step="0.1" min="0" max="10" id="bakeLogRating"></div>
     <div class="field"><label>comments</label><textarea id="bakeLogComments"></textarea></div>
     <div class="field">
@@ -1326,7 +1372,7 @@
   function removeExtra(i){ extrasRows.splice(i,1); renderExtrasList(); renderCalcOutput(); }
   function renderExtrasList(){
     document.getElementById('extrasList').innerHTML = extrasRows.map((e,i) => `
-      <span class="extra-chip">${escapeHtml(e.name)} · ${e.grams}g <button onclick="removeExtra(${i})">✕</button></span>
+      <span class="extra-chip">${escapeHtml(e.name)} <span class="grams">${e.grams}g</span> <button onclick="removeExtra(${i})">✕</button></span>
     `).join('');
   }
 
@@ -1337,12 +1383,17 @@
     const salt = Number(params.salt) || 0;
     const levainFlourPct = Number(params.levainFlourPct) || 0;
     const levainHydration = Number(params.levainHydration) || 0;
-    const seedPct = Number(params.seedPct) || 0;
     const autolysePct = Number(params.autolysePct) || 0;
+
+    const starterWhite = Number(params.starterWhite) || 0;
+    const starterWholemeal = Number(params.starterWholemeal) || 0;
+    const starterWater = Number(params.starterWater) || 0;
+    const starterTotal = starterWhite + starterWholemeal + starterWater;
+    const starterHydration = (starterWhite + starterWholemeal) > 0 ? (starterWater / (starterWhite+starterWholemeal)) * 100 : 0;
 
     const levainFlour = totalFlour * (levainFlourPct/100);
     const levainWater = levainFlour * (levainHydration/100);
-    const starterSeed = levainFlour * (seedPct/100);
+    const starterSeed = starterTotal; // the fed starter becomes the levain's seed
     const levainTotal = levainFlour + levainWater + starterSeed;
 
     const mainFlour = totalFlour - levainFlour;
@@ -1366,6 +1417,7 @@
 
     return {
       totalFlour, hydration, salt, totalWater, saltGrams,
+      starterWhite, starterWholemeal, starterWater, starterTotal, starterHydration,
       levainFlour, levainWater, starterSeed, levainTotal, levainFlourPct,
       autolyseFlour, autolyseWater, autolysePct,
       finalMixFlour, finalMixWater,
@@ -1378,9 +1430,11 @@
       totalFlour: document.getElementById('calcTotalFlour').value,
       hydration: document.getElementById('calcHydration').value,
       salt: document.getElementById('calcSalt').value,
+      starterWhite: document.getElementById('calcStarterWhite').value,
+      starterWholemeal: document.getElementById('calcStarterWholemeal').value,
+      starterWater: document.getElementById('calcStarterWater').value,
       levainFlourPct: document.getElementById('calcLevainFlourPct').value,
       levainHydration: document.getElementById('calcLevainHydration').value,
-      seedPct: document.getElementById('calcSeedPct').value,
       autolysePct: document.getElementById('calcAutolysePct').value,
       flourTypes: flourTypeRows,
       extras: extrasRows
@@ -1393,19 +1447,25 @@
     let flourWarning = Math.abs(f.flourPctSum - 100) > 0.5
       ? `<div class="empty-msg" style="margin-bottom:10px; color:#D8425A; background:#fff0f1;">⚠ your flour blend adds up to ${f.flourPctSum}%, not 100%</div>` : '';
 
+    document.getElementById('seedFromStarterNote').innerHTML =
+      `🌱 seed from your starter above: <strong>${f.starterTotal.toFixed(0)}g</strong> (${f.starterHydration.toFixed(0)}% hydration)`;
+
     wrap.innerHTML = `
       ${flourWarning}
       ${f.flourBreakdown.map(fb => `<div class="calc-out-row"><span>${escapeHtml(fb.type)} flour (${fb.pct}%)</span><span class="val">${fb.grams.toFixed(0)}g</span></div>`).join('')}
       <div class="calc-out-row"><span>Total water (${f.hydration}% hydration)</span><span class="val">${f.totalWater.toFixed(0)}g</span></div>
-      <div class="calc-out-row"><span>Salt (${f.salt}%)</span><span class="val">${f.saltGrams.toFixed(0)}g</span></div>
+      <div class="calc-out-row"><span>Starter — white flour</span><span class="val">${f.starterWhite.toFixed(0)}g</span></div>
+      <div class="calc-out-row"><span>Starter — wholemeal flour</span><span class="val">${f.starterWholemeal.toFixed(0)}g</span></div>
+      <div class="calc-out-row"><span>Starter — water</span><span class="val">${f.starterWater.toFixed(0)}g</span></div>
+      <div class="calc-out-row"><span>Starter total (${f.starterHydration.toFixed(0)}% hydration)</span><span class="val">${f.starterTotal.toFixed(0)}g</span></div>
       <div class="calc-out-row"><span>Levain — flour</span><span class="val">${f.levainFlour.toFixed(0)}g</span></div>
       <div class="calc-out-row"><span>Levain — water</span><span class="val">${f.levainWater.toFixed(0)}g</span></div>
-      <div class="calc-out-row"><span>Starter seed</span><span class="val">${f.starterSeed.toFixed(0)}g</span></div>
-      <div class="calc-out-row"><span>Levain total (${f.levainFlourPct}% of flour)</span><span class="val">${f.levainTotal.toFixed(0)}g</span></div>
+      <div class="calc-out-row"><span>Levain total (${f.levainFlourPct}% of flour, incl. starter seed)</span><span class="val">${f.levainTotal.toFixed(0)}g</span></div>
       ${f.autolysePct > 0 ? `
         <div class="calc-out-row"><span>Autolyse flour</span><span class="val">${f.autolyseFlour.toFixed(0)}g</span></div>
         <div class="calc-out-row"><span>Autolyse water</span><span class="val">${f.autolyseWater.toFixed(0)}g</span></div>
       ` : ''}
+      <div class="calc-out-row"><span>Salt (${f.salt}%) — mixed in at the autolyse</span><span class="val">${f.saltGrams.toFixed(0)}g</span></div>
       <div class="calc-out-row"><span>Final mix — flour</span><span class="val">${f.finalMixFlour.toFixed(0)}g</span></div>
       <div class="calc-out-row"><span>Final mix — water</span><span class="val">${f.finalMixWater.toFixed(0)}g</span></div>
       ${f.extrasTotal > 0 ? `<div class="calc-out-row"><span>Extras</span><span class="val">${f.extrasTotal.toFixed(0)}g</span></div>` : ''}
@@ -1424,7 +1484,9 @@
       SaltPct: Number(form.salt)||0,
       LevainFlourPct: Number(form.levainFlourPct)||0,
       LevainHydrationPct: Number(form.levainHydration)||0,
-      SeedPct: Number(form.seedPct)||0,
+      StarterWhiteFlour: Number(form.starterWhite)||0,
+      StarterWholemealFlour: Number(form.starterWholemeal)||0,
+      StarterWater: Number(form.starterWater)||0,
       AutolysePct: Number(form.autolysePct)||0,
       FlourTypes: form.flourTypes,
       Extras: form.extras
@@ -1468,12 +1530,14 @@
 
     const f = computeFormula({
       totalFlour: r.TotalFlour, hydration: r.HydrationPct, salt: r.SaltPct,
-      levainFlourPct: r.LevainFlourPct, levainHydration: r.LevainHydrationPct, seedPct: r.SeedPct,
+      levainFlourPct: r.LevainFlourPct, levainHydration: r.LevainHydrationPct,
+      starterWhite: r.StarterWhiteFlour, starterWholemeal: r.StarterWholemealFlour, starterWater: r.StarterWater,
       autolysePct: r.AutolysePct, flourTypes: r.FlourTypes || [], extras: r.Extras || []
     });
     document.getElementById('bakeDetailFormula').innerHTML = `
       ${f.flourBreakdown.map(fb => `<div class="calc-out-row"><span>${escapeHtml(fb.type)} flour</span><span class="val">${fb.grams.toFixed(0)}g</span></div>`).join('')}
       <div class="calc-out-row"><span>Water (${f.hydration}%)</span><span class="val">${f.totalWater.toFixed(0)}g</span></div>
+      <div class="calc-out-row"><span>Starter (${f.starterHydration.toFixed(0)}% hydration)</span><span class="val">${f.starterTotal.toFixed(0)}g</span></div>
       <div class="calc-out-row"><span>Salt</span><span class="val">${f.saltGrams.toFixed(0)}g</span></div>
       <div class="calc-out-row"><span>Levain total</span><span class="val">${f.levainTotal.toFixed(0)}g</span></div>
       ${f.extrasTotal > 0 ? `<div class="calc-out-row"><span>Extras</span><span class="val">${f.extrasTotal.toFixed(0)}g</span></div>` : ''}
@@ -1490,14 +1554,18 @@
           <div class="cooked-full-top">
             <div>
               <div class="name">${escapeHtml(b.DateBaked||'')}</div>
-              <div class="book">${b.FermentHours ? b.FermentHours+'hr ferment' : ''}${b.FermentTemp ? ' @ '+b.FermentTemp+'°C' : ''}</div>
             </div>
             <div class="rating-chip">${formatRating(b.Rating)}</div>
           </div>
-          ${b.PhotoURL ? `<img class="bake-photo" src="${escapeHtml(b.PhotoURL)}" alt="loaf photo" onerror="this.style.display='none'">` : ''}
-          ${b.StarterNotes ? `<div class="cooked-full-comment"><strong>Starter:</strong> ${escapeHtml(b.StarterNotes)}</div>` : ''}
-          ${(b.OvenTemp || b.BakeMinutes || b.SteamMethod) ? `<div class="cooked-full-comment"><strong>Bake:</strong> ${b.OvenTemp?b.OvenTemp+'°C ':''}${b.BakeMinutes?b.BakeMinutes+'min ':''}${escapeHtml(b.SteamMethod||'')}</div>` : ''}
-          ${b.Comments ? `<div class="cooked-full-comment">${escapeHtml(b.Comments)}</div>` : ''}
+          ${b.PhotoURL ? `
+            <img class="bake-photo" src="${escapeHtml(b.PhotoURL)}" alt="loaf photo"
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+            <div class="photo-fail" style="display:none;">⚠ couldn't load that photo link — it may not be a direct image URL (see the tip when editing this bake)</div>
+          ` : ''}
+          ${b.FermentHours || b.FermentTemp ? `<div class="bake-detail-row"><span class="k">ferment</span><span>${b.FermentHours?b.FermentHours+'hrs':''}${b.FermentTemp?' @ '+b.FermentTemp+'°C':''}</span></div>` : ''}
+          ${b.StarterNotes ? `<div class="bake-detail-row"><span class="k">starter</span><span>${escapeHtml(b.StarterNotes)}</span></div>` : ''}
+          ${(b.OvenTemp || b.BakeMinutes || b.SteamMethod) ? `<div class="bake-detail-row"><span class="k">bake</span><span>${b.OvenTemp?b.OvenTemp+'°C, ':''}${b.BakeMinutes?b.BakeMinutes+'min':''}${b.SteamMethod?', '+escapeHtml(b.SteamMethod):''}</span></div>` : ''}
+          ${b.Comments ? `<div class="bake-detail-row"><span class="k">notes</span><span>${escapeHtml(b.Comments)}</span></div>` : ''}
           <div class="cooked-full-bottom">
             <span class="date">${againBadgeHtml(b.BakeAgain)}</span>
             <div style="display:flex; gap:6px;">
