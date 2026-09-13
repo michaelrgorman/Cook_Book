@@ -290,6 +290,30 @@
     padding:12px 18px; border-radius:14px; z-index:100; max-width:90vw; text-align:center;
   }
   .toast.error{ background:#D8425A; }
+
+  /* ---------- Bake tab ---------- */
+  .flour-row{ display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+  .flour-row select{ flex:1.4; padding:9px 10px; border-radius:10px; border:2px solid var(--ink); font-family:'Fredoka', sans-serif; font-size:14px; }
+  .flour-row input{ width:70px; padding:9px 10px; border-radius:10px; border:2px solid var(--ink); font-family:'Space Mono', monospace; font-size:13px; }
+  .flour-row .pct-sign{ font-family:'Space Mono', monospace; font-size:12px; color:var(--muted); }
+  .flour-row .remove-x{ background:none; border:none; color:#D8425A; font-size:16px; cursor:pointer; padding:4px; }
+  .extra-chip{
+    display:inline-flex; align-items:center; gap:6px; background: var(--card); border:2px solid var(--ink);
+    border-radius:20px; padding:6px 10px; margin:0 6px 6px 0; font-family:'Space Mono', monospace; font-size:11.5px;
+  }
+  .extra-chip button{ background:none; border:none; color:#D8425A; font-weight:700; cursor:pointer; padding:0; font-size:13px; }
+  .calc-out-row{
+    display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px dashed #e5e0d3; font-size:14px;
+  }
+  .calc-out-row .val{ font-family:'Space Mono', monospace; font-weight:700; }
+  .calc-out-total{
+    display:flex; justify-content:space-between; margin-top:10px; padding:12px 14px; background: var(--yellow);
+    color:#161616; border-radius:14px; border: 2px solid var(--ink); font-weight:700;
+  }
+  .bake-photo{ width:100%; max-width:280px; border-radius:14px; border:2px solid var(--ink); margin-top:8px; display:block; }
+  .bake-recipe-card{ background: var(--card); border-radius:16px; padding:14px 16px; margin-bottom:10px; cursor:pointer; }
+  .bake-recipe-card .name{ font-weight:600; font-size:16px; }
+  .bake-recipe-card .sub{ font-family:'Space Mono', monospace; font-size:11px; color: var(--muted); margin-top:3px; }
 </style>
 </head>
 <body>
@@ -363,11 +387,77 @@
   <div id="statsBody"></div>
 </div>
 
+<!-- BAKE -->
+<div class="page" id="page-bake">
+  <div class="pill-row" id="bakeViewTabs"></div>
+
+  <!-- Calculator view -->
+  <div id="bakeCalcWrap">
+    <div class="section-title" style="margin-top:0;">🧮 Dough calculator</div>
+
+    <div class="field"><label>total flour (g) — this is your 100% baseline</label><input type="number" id="calcTotalFlour" value="500" min="1"></div>
+    <div class="field"><label>overall hydration %</label><input type="number" id="calcHydration" value="75" min="0"></div>
+    <div class="field"><label>salt %</label><input type="number" id="calcSalt" value="2" step="0.1" min="0"></div>
+
+    <div class="section-title" style="font-size:16px;">The levain</div>
+    <div class="field"><label>levain flour — % of total flour</label><input type="number" id="calcLevainFlourPct" value="20" min="0" max="100"></div>
+    <div class="field"><label>levain hydration %</label><input type="number" id="calcLevainHydration" value="100" min="0"></div>
+    <div class="field"><label>starter seed — % of levain flour (inoculation)</label><input type="number" id="calcSeedPct" value="20" min="0"></div>
+
+    <div class="section-title" style="font-size:16px;">Autolyse</div>
+    <div class="field"><label>autolyse — % of main dough flour (0 = skip)</label><input type="number" id="calcAutolysePct" value="0" min="0" max="100"></div>
+
+    <div class="section-title" style="font-size:16px;">Flour blend</div>
+    <div id="flourTypeRows"></div>
+    <button class="btn small pop-sm pressable" onclick="addFlourTypeRow()">+ Add flour type</button>
+
+    <div class="section-title" style="font-size:16px;">Extras</div>
+    <div class="inline-form">
+      <select id="extraPreset">
+        <option>Seeds</option><option>Olives</option><option>Cheese</option><option>Herbs</option>
+        <option>Honey</option><option>Walnuts</option><option>Dried fruit</option><option>Oil</option><option>Other</option>
+      </select>
+      <input type="number" id="extraGrams" placeholder="grams" style="width:90px;">
+      <button class="btn small green" onclick="addExtra()">+ Add</button>
+    </div>
+    <div id="extrasList" style="margin-bottom:14px;"></div>
+
+    <div class="section-title" style="font-size:16px;">Breakdown</div>
+    <div id="calcOutput"></div>
+
+    <div class="field" style="margin-top:16px;"><label>save this as</label><input type="text" id="calcRecipeName" placeholder="e.g. Sunday white sourdough"></div>
+    <button class="btn pink block pop-sm pressable" onclick="saveSourdoughRecipe()">💾 Save this recipe</button>
+  </div>
+
+  <!-- Saved recipes list -->
+  <div id="bakeListWrap" style="display:none;">
+    <div class="section-title" style="margin-top:0;">📖 My bakes</div>
+    <div id="bakeRecipeList"></div>
+    <div class="empty-msg" id="bakeRecipeEmpty" style="display:none;">no saved dough recipes yet — build one in the calculator!</div>
+  </div>
+
+  <!-- Saved recipe detail -->
+  <div id="bakeDetailWrap" style="display:none;">
+    <button class="btn small back-btn" onclick="showBakeList()">‹ My bakes</button>
+    <div id="bakeDetailHead"></div>
+    <div class="section-title" style="font-size:16px; margin-top:18px;">Formula</div>
+    <div id="bakeDetailFormula"></div>
+    <div class="fab-row" style="margin-top:14px;">
+      <button class="btn green small pop-sm pressable" onclick="openBakeLogModal(null)">+ Log a bake</button>
+      <button class="btn small danger" onclick="deleteSourdoughRecipe()">Delete recipe</button>
+    </div>
+    <div class="section-title" style="font-size:16px;">Bake history</div>
+    <div id="bakeLogList"></div>
+    <div class="empty-msg" id="bakeLogEmpty" style="display:none;">no bakes logged against this recipe yet.</div>
+  </div>
+</div>
+
 <div class="bottomnav">
   <button class="navbtn active" id="nav-dashboard" onclick="switchTab('dashboard')"><span class="icon">🏠</span>Home</button>
   <button class="navbtn" id="nav-books" onclick="switchTab('books')"><span class="icon">📚</span>Books</button>
   <button class="navbtn" id="nav-cooked" onclick="switchTab('cooked')"><span class="icon">🍳</span>Cooked</button>
   <button class="navbtn" id="nav-stats" onclick="switchTab('stats')"><span class="icon">📊</span>Stats</button>
+  <button class="navbtn" id="nav-bake" onclick="switchTab('bake')"><span class="icon">🍞</span>Bake</button>
 </div>
 
 <!-- Book Modal -->
@@ -436,6 +526,36 @@
   </div>
 </div>
 
+<!-- Bake Log Modal -->
+<div class="overlay" id="bakeLogOverlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h3 id="bakeLogModalTitle">Log a bake</h3>
+    <input type="hidden" id="bakeLogOriginalID">
+    <div class="field"><label>date baked</label><input type="date" id="bakeLogDate" min="2026-01-01"></div>
+    <div class="field"><label>fermentation time (hours)</label><input type="number" id="bakeLogFermentHours" step="0.5" min="0"></div>
+    <div class="field"><label>fermentation temp (°C)</label><input type="number" id="bakeLogFermentTemp" step="0.5"></div>
+    <div class="field"><label>starter notes (feeding ratio, how active it was)</label><input type="text" id="bakeLogStarterNotes" placeholder="e.g. 1:5:5, doubled in 4hrs"></div>
+    <div class="field"><label>oven temp (°C)</label><input type="number" id="bakeLogOvenTemp" step="1"></div>
+    <div class="field"><label>bake time (minutes)</label><input type="number" id="bakeLogBakeMinutes" step="1" min="0"></div>
+    <div class="field"><label>steam method</label><input type="text" id="bakeLogSteamMethod" placeholder="e.g. dutch oven, ice cubes, tray of water"></div>
+    <div class="field"><label>photo link (optional)</label><input type="text" id="bakeLogPhotoURL" placeholder="paste a photo URL"></div>
+    <div class="field"><label>rating (0–10)</label><input type="number" step="0.1" min="0" max="10" id="bakeLogRating"></div>
+    <div class="field"><label>comments</label><textarea id="bakeLogComments"></textarea></div>
+    <div class="field">
+      <label>bake this again?</label>
+      <div class="again-toggle" id="bakeLogAgainToggle">
+        <button type="button" class="again-btn yes" onclick="setAgainToggle('bakeLogAgainToggle', true)">👍 Yes</button>
+        <button type="button" class="again-btn no" onclick="setAgainToggle('bakeLogAgainToggle', false)">👎 No</button>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('bakeLogOverlay')">Cancel</button>
+      <button class="btn green" onclick="saveBakeLog()">Save</button>
+    </div>
+  </div>
+</div>
+
 <script>
   const SUPABASE_URL = 'https://eyysxvdemncgigmknjgu.supabase.co';
   const SUPABASE_KEY = 'sb_publishable_3rPtZJJRv7iJ-snpGn6oew_94G9c8J3';
@@ -444,6 +564,8 @@
   const T_BOOK = 'CookBook_Name';
   const T_RECIPE = 'CookBook_Recipe';
   const T_COOKED = 'CookBook_Cooked';
+  const T_SD_RECIPE = 'Sourdough_Recipe';
+  const T_SD_BAKE = 'Sourdough_Bake';
 
   const PALETTE = ['#FFC93C','#FF4D8D','#3A7BFF','#33B27A','#FF7A33','#8C6BF2'];
   const MIN_DATE = '2026-01-01';
@@ -461,6 +583,14 @@
   let tonightPick = null;
   let tonightTagFilter = null;
   const againState = {};
+
+  // Bake tab state
+  let sourdoughRecipes = [];
+  let sourdoughBakes = [];
+  let bakeView = 'calculator'; // calculator | list | detail
+  let currentBakeRecipeID = null;
+  let flourTypeRows = [{type:'White', pct:100}];
+  let extrasRows = [];
 
   function isTrue(v){ return v === true || v === 'true' || v === 't'; }
   function isFalseSet(v){ return v === false || v === 'false' || v === 'f'; }
@@ -497,18 +627,25 @@
     if(tab === 'books') renderBooksTab();
     if(tab === 'cooked') renderCookedTab();
     if(tab === 'stats') renderStats();
+    if(tab === 'bake') renderBakeTab();
   }
 
   async function loadAll(){
-    const [{data:b, error:eb}, {data:r, error:er}, {data:c, error:ec}] = await Promise.all([
+    const [{data:b, error:eb}, {data:r, error:er}, {data:c, error:ec}, {data:sr, error:esr}, {data:sk, error:esk}] = await Promise.all([
       sb.from(T_BOOK).select('*').order('Title', {ascending:true}),
       sb.from(T_RECIPE).select('*').order('RecipeName', {ascending:true}),
-      sb.from(T_COOKED).select('*')
+      sb.from(T_COOKED).select('*'),
+      sb.from(T_SD_RECIPE).select('*').order('Name', {ascending:true}),
+      sb.from(T_SD_BAKE).select('*')
     ]);
     if(eb || er || ec){
       console.error(eb, er, ec);
       toast('Could not load data — check RLS policies on your Supabase tables.', true);
       return;
+    }
+    if(esr || esk){
+      console.error(esr, esk);
+      toast('Could not load sourdough data — check the Sourdough tables/RLS exist.', true);
     }
     books = b || [];
     recipes = r || [];
@@ -518,6 +655,8 @@
       if(!cookedByRecipe[entry.RecipeID]) cookedByRecipe[entry.RecipeID] = [];
       cookedByRecipe[entry.RecipeID].push(entry);
     });
+    sourdoughRecipes = sr || [];
+    sourdoughBakes = (sk || []).slice().sort((a,z) => String(z.DateBaked).localeCompare(String(a.DateBaked)));
     switchTab(currentTab);
   }
 
@@ -1133,6 +1272,325 @@
       : `<div class="empty-msg">start answering "cook again?" to see this</div>`;
 
     wrap.innerHTML = html;
+  }
+
+  // ---------------- BAKE TAB: Calculator ----------------
+  const FLOUR_TYPES = ['White','Wholemeal','Rye','Spelt','Einkorn','Semolina','Other'];
+
+  function renderBakeTab(){
+    document.getElementById('bakeViewTabs').innerHTML = `
+      <button class="pill-btn ${bakeView==='calculator'?'active':''}" onclick="showBakeCalculator()">🧮 Calculator</button>
+      <button class="pill-btn ${bakeView!=='calculator'?'active':''}" onclick="showBakeList()">📖 My bakes</button>
+    `;
+    document.getElementById('bakeCalcWrap').style.display = bakeView==='calculator' ? 'block' : 'none';
+    document.getElementById('bakeListWrap').style.display = bakeView==='list' ? 'block' : 'none';
+    document.getElementById('bakeDetailWrap').style.display = bakeView==='detail' ? 'block' : 'none';
+
+    if(bakeView === 'calculator'){ renderFlourRows(); renderExtrasList(); renderCalcOutput(); }
+    else if(bakeView === 'list'){ renderBakeRecipeList(); }
+    else if(bakeView === 'detail'){ renderBakeDetail(); }
+  }
+
+  function showBakeCalculator(){ bakeView = 'calculator'; renderBakeTab(); }
+  function showBakeList(){ bakeView = 'list'; currentBakeRecipeID = null; renderBakeTab(); }
+  function showBakeDetail(recipeId){ bakeView = 'detail'; currentBakeRecipeID = recipeId; renderBakeTab(); }
+
+  function addFlourTypeRow(){ flourTypeRows.push({type:'White', pct:0}); renderFlourRows(); }
+  function removeFlourTypeRow(i){ flourTypeRows.splice(i,1); renderFlourRows(); renderCalcOutput(); }
+  function updateFlourType(i, val){ flourTypeRows[i].type = val; renderCalcOutput(); }
+  function updateFlourPct(i, val){ flourTypeRows[i].pct = Number(val)||0; renderCalcOutput(); }
+
+  function renderFlourRows(){
+    const wrap = document.getElementById('flourTypeRows');
+    wrap.innerHTML = flourTypeRows.map((row, i) => `
+      <div class="flour-row">
+        <select onchange="updateFlourType(${i}, this.value)">
+          ${FLOUR_TYPES.map(t => `<option ${row.type===t?'selected':''}>${t}</option>`).join('')}
+        </select>
+        <input type="number" value="${row.pct}" onchange="updateFlourPct(${i}, this.value)">
+        <span class="pct-sign">%</span>
+        ${flourTypeRows.length > 1 ? `<button class="remove-x" onclick="removeFlourTypeRow(${i})">✕</button>` : ''}
+      </div>
+    `).join('');
+  }
+
+  function addExtra(){
+    const preset = document.getElementById('extraPreset').value;
+    const grams = Number(document.getElementById('extraGrams').value);
+    if(!grams || grams <= 0){ toast('Enter a gram amount for the extra.', true); return; }
+    extrasRows.push({name:preset, grams});
+    document.getElementById('extraGrams').value = '';
+    renderExtrasList();
+    renderCalcOutput();
+  }
+  function removeExtra(i){ extrasRows.splice(i,1); renderExtrasList(); renderCalcOutput(); }
+  function renderExtrasList(){
+    document.getElementById('extrasList').innerHTML = extrasRows.map((e,i) => `
+      <span class="extra-chip">${escapeHtml(e.name)} · ${e.grams}g <button onclick="removeExtra(${i})">✕</button></span>
+    `).join('');
+  }
+
+  // Core "full formula" baker's math
+  function computeFormula(params){
+    const totalFlour = Number(params.totalFlour) || 0;
+    const hydration = Number(params.hydration) || 0;
+    const salt = Number(params.salt) || 0;
+    const levainFlourPct = Number(params.levainFlourPct) || 0;
+    const levainHydration = Number(params.levainHydration) || 0;
+    const seedPct = Number(params.seedPct) || 0;
+    const autolysePct = Number(params.autolysePct) || 0;
+
+    const levainFlour = totalFlour * (levainFlourPct/100);
+    const levainWater = levainFlour * (levainHydration/100);
+    const starterSeed = levainFlour * (seedPct/100);
+    const levainTotal = levainFlour + levainWater + starterSeed;
+
+    const mainFlour = totalFlour - levainFlour;
+    const totalWater = totalFlour * (hydration/100);
+    const mainWaterNeeded = totalWater - levainWater;
+
+    const autolyseFlour = mainFlour * (autolysePct/100);
+    const autolyseWater = autolyseFlour * (hydration/100);
+
+    const finalMixFlour = mainFlour - autolyseFlour;
+    const finalMixWater = mainWaterNeeded - autolyseWater;
+    const saltGrams = totalFlour * (salt/100);
+
+    const extrasTotal = (params.extras||[]).reduce((s,e)=>s+(Number(e.grams)||0), 0);
+    const totalDoughWeight = totalFlour + totalWater + saltGrams + starterSeed + extrasTotal;
+
+    const flourBreakdown = (params.flourTypes||[]).map(f => ({
+      type: f.type, pct: f.pct, grams: totalFlour * (Number(f.pct)/100)
+    }));
+    const flourPctSum = (params.flourTypes||[]).reduce((s,f)=>s+(Number(f.pct)||0),0);
+
+    return {
+      totalFlour, hydration, salt, totalWater, saltGrams,
+      levainFlour, levainWater, starterSeed, levainTotal, levainFlourPct,
+      autolyseFlour, autolyseWater, autolysePct,
+      finalMixFlour, finalMixWater,
+      extrasTotal, totalDoughWeight, flourBreakdown, flourPctSum
+    };
+  }
+
+  function readCalcForm(){
+    return {
+      totalFlour: document.getElementById('calcTotalFlour').value,
+      hydration: document.getElementById('calcHydration').value,
+      salt: document.getElementById('calcSalt').value,
+      levainFlourPct: document.getElementById('calcLevainFlourPct').value,
+      levainHydration: document.getElementById('calcLevainHydration').value,
+      seedPct: document.getElementById('calcSeedPct').value,
+      autolysePct: document.getElementById('calcAutolysePct').value,
+      flourTypes: flourTypeRows,
+      extras: extrasRows
+    };
+  }
+
+  function renderCalcOutput(){
+    const f = computeFormula(readCalcForm());
+    const wrap = document.getElementById('calcOutput');
+    let flourWarning = Math.abs(f.flourPctSum - 100) > 0.5
+      ? `<div class="empty-msg" style="margin-bottom:10px; color:#D8425A; background:#fff0f1;">⚠ your flour blend adds up to ${f.flourPctSum}%, not 100%</div>` : '';
+
+    wrap.innerHTML = `
+      ${flourWarning}
+      ${f.flourBreakdown.map(fb => `<div class="calc-out-row"><span>${escapeHtml(fb.type)} flour (${fb.pct}%)</span><span class="val">${fb.grams.toFixed(0)}g</span></div>`).join('')}
+      <div class="calc-out-row"><span>Total water (${f.hydration}% hydration)</span><span class="val">${f.totalWater.toFixed(0)}g</span></div>
+      <div class="calc-out-row"><span>Salt (${f.salt}%)</span><span class="val">${f.saltGrams.toFixed(0)}g</span></div>
+      <div class="calc-out-row"><span>Levain — flour</span><span class="val">${f.levainFlour.toFixed(0)}g</span></div>
+      <div class="calc-out-row"><span>Levain — water</span><span class="val">${f.levainWater.toFixed(0)}g</span></div>
+      <div class="calc-out-row"><span>Starter seed</span><span class="val">${f.starterSeed.toFixed(0)}g</span></div>
+      <div class="calc-out-row"><span>Levain total (${f.levainFlourPct}% of flour)</span><span class="val">${f.levainTotal.toFixed(0)}g</span></div>
+      ${f.autolysePct > 0 ? `
+        <div class="calc-out-row"><span>Autolyse flour</span><span class="val">${f.autolyseFlour.toFixed(0)}g</span></div>
+        <div class="calc-out-row"><span>Autolyse water</span><span class="val">${f.autolyseWater.toFixed(0)}g</span></div>
+      ` : ''}
+      <div class="calc-out-row"><span>Final mix — flour</span><span class="val">${f.finalMixFlour.toFixed(0)}g</span></div>
+      <div class="calc-out-row"><span>Final mix — water</span><span class="val">${f.finalMixWater.toFixed(0)}g</span></div>
+      ${f.extrasTotal > 0 ? `<div class="calc-out-row"><span>Extras</span><span class="val">${f.extrasTotal.toFixed(0)}g</span></div>` : ''}
+      <div class="calc-out-total"><span>Total dough weight</span><span>${f.totalDoughWeight.toFixed(0)}g</span></div>
+    `;
+  }
+
+  async function saveSourdoughRecipe(){
+    const name = document.getElementById('calcRecipeName').value.trim();
+    if(!name){ toast('Give this recipe a name first.', true); return; }
+    const form = readCalcForm();
+    const {error} = await sb.from(T_SD_RECIPE).insert({
+      Name: name,
+      TotalFlour: Number(form.totalFlour)||0,
+      HydrationPct: Number(form.hydration)||0,
+      SaltPct: Number(form.salt)||0,
+      LevainFlourPct: Number(form.levainFlourPct)||0,
+      LevainHydrationPct: Number(form.levainHydration)||0,
+      SeedPct: Number(form.seedPct)||0,
+      AutolysePct: Number(form.autolysePct)||0,
+      FlourTypes: form.flourTypes,
+      Extras: form.extras
+    });
+    if(error){ toast('Could not save: ' + error.message, true); return; }
+    toast('Recipe saved!');
+    document.getElementById('calcRecipeName').value = '';
+    await loadAll();
+    showBakeList();
+  }
+
+  // ---------------- BAKE TAB: Saved recipes list & detail ----------------
+  function sdBakesFor(recipeId){ return sourdoughBakes.filter(b => String(b.RecipeID) === String(recipeId)); }
+
+  function renderBakeRecipeList(){
+    const wrap = document.getElementById('bakeRecipeList');
+    const empty = document.getElementById('bakeRecipeEmpty');
+    if(sourdoughRecipes.length === 0){ wrap.innerHTML=''; empty.style.display='block'; return; }
+    empty.style.display = 'none';
+    wrap.innerHTML = sourdoughRecipes.map(r => {
+      const bakes = sdBakesFor(r.RecipeID);
+      const avg = ratingAvg(bakes);
+      return `
+        <div class="bake-recipe-card pressable" onclick="showBakeDetail(${r.RecipeID})">
+          <div class="name">${escapeHtml(r.Name)}</div>
+          <div class="sub">${r.TotalFlour}g flour · ${r.HydrationPct}% hydration · ${r.LevainFlourPct}% levain ${bakes.length ? `· baked ${bakes.length}× ${avg!==null? '· '+avg.toFixed(1)+'/10':''}` : ''}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderBakeDetail(){
+    const r = sourdoughRecipes.find(x => String(x.RecipeID) === String(currentBakeRecipeID));
+    if(!r){ showBakeList(); return; }
+    const bakes = sdBakesFor(r.RecipeID);
+
+    document.getElementById('bakeDetailHead').innerHTML = `
+      <h2 style="font-size:20px;">${escapeHtml(r.Name)}</h2>
+      <div class="mono" style="font-size:11.5px; color:var(--muted); margin-top:2px;">saved dough recipe</div>
+    `;
+
+    const f = computeFormula({
+      totalFlour: r.TotalFlour, hydration: r.HydrationPct, salt: r.SaltPct,
+      levainFlourPct: r.LevainFlourPct, levainHydration: r.LevainHydrationPct, seedPct: r.SeedPct,
+      autolysePct: r.AutolysePct, flourTypes: r.FlourTypes || [], extras: r.Extras || []
+    });
+    document.getElementById('bakeDetailFormula').innerHTML = `
+      ${f.flourBreakdown.map(fb => `<div class="calc-out-row"><span>${escapeHtml(fb.type)} flour</span><span class="val">${fb.grams.toFixed(0)}g</span></div>`).join('')}
+      <div class="calc-out-row"><span>Water (${f.hydration}%)</span><span class="val">${f.totalWater.toFixed(0)}g</span></div>
+      <div class="calc-out-row"><span>Salt</span><span class="val">${f.saltGrams.toFixed(0)}g</span></div>
+      <div class="calc-out-row"><span>Levain total</span><span class="val">${f.levainTotal.toFixed(0)}g</span></div>
+      ${f.extrasTotal > 0 ? `<div class="calc-out-row"><span>Extras</span><span class="val">${f.extrasTotal.toFixed(0)}g</span></div>` : ''}
+      <div class="calc-out-total"><span>Total dough weight</span><span>${f.totalDoughWeight.toFixed(0)}g</span></div>
+    `;
+
+    const logWrap = document.getElementById('bakeLogList');
+    const logEmpty = document.getElementById('bakeLogEmpty');
+    if(bakes.length === 0){ logWrap.innerHTML=''; logEmpty.style.display='block'; }
+    else {
+      logEmpty.style.display = 'none';
+      logWrap.innerHTML = bakes.map(b => `
+        <div class="cooked-full-item">
+          <div class="cooked-full-top">
+            <div>
+              <div class="name">${escapeHtml(b.DateBaked||'')}</div>
+              <div class="book">${b.FermentHours ? b.FermentHours+'hr ferment' : ''}${b.FermentTemp ? ' @ '+b.FermentTemp+'°C' : ''}</div>
+            </div>
+            <div class="rating-chip">${formatRating(b.Rating)}</div>
+          </div>
+          ${b.PhotoURL ? `<img class="bake-photo" src="${escapeHtml(b.PhotoURL)}" alt="loaf photo" onerror="this.style.display='none'">` : ''}
+          ${b.StarterNotes ? `<div class="cooked-full-comment"><strong>Starter:</strong> ${escapeHtml(b.StarterNotes)}</div>` : ''}
+          ${(b.OvenTemp || b.BakeMinutes || b.SteamMethod) ? `<div class="cooked-full-comment"><strong>Bake:</strong> ${b.OvenTemp?b.OvenTemp+'°C ':''}${b.BakeMinutes?b.BakeMinutes+'min ':''}${escapeHtml(b.SteamMethod||'')}</div>` : ''}
+          ${b.Comments ? `<div class="cooked-full-comment">${escapeHtml(b.Comments)}</div>` : ''}
+          <div class="cooked-full-bottom">
+            <span class="date">${againBadgeHtml(b.BakeAgain)}</span>
+            <div style="display:flex; gap:6px;">
+              <button class="btn small" onclick="openBakeLogModal(${b.BakeID})">Edit</button>
+              <button class="btn small danger" onclick="deleteBakeLog(${b.BakeID})">Remove</button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+  }
+
+  async function deleteSourdoughRecipe(){
+    if(!confirm('Delete this dough recipe? Its bake history will be removed too.')) return;
+    await sb.from(T_SD_BAKE).delete().eq('RecipeID', currentBakeRecipeID);
+    const {error} = await sb.from(T_SD_RECIPE).delete().eq('RecipeID', currentBakeRecipeID);
+    if(error){ toast('Could not delete: ' + error.message, true); return; }
+    toast('Recipe removed.');
+    await loadAll();
+    showBakeList();
+  }
+
+  // ---------------- BAKE TAB: Log a bake ----------------
+  function openBakeLogModal(bakeId){
+    const entry = bakeId ? sourdoughBakes.find(b => String(b.BakeID) === String(bakeId)) : null;
+    document.getElementById('bakeLogModalTitle').textContent = entry ? 'Edit bake' : 'Log a bake';
+    document.getElementById('bakeLogOriginalID').value = bakeId || '';
+    document.getElementById('bakeLogDate').min = MIN_DATE;
+    document.getElementById('bakeLogDate').max = todayStr();
+    document.getElementById('bakeLogDate').value = entry ? entry.DateBaked : todayStr();
+    document.getElementById('bakeLogFermentHours').value = entry ? (entry.FermentHours ?? '') : '';
+    document.getElementById('bakeLogFermentTemp').value = entry ? (entry.FermentTemp ?? '') : '';
+    document.getElementById('bakeLogStarterNotes').value = entry ? (entry.StarterNotes || '') : '';
+    document.getElementById('bakeLogOvenTemp').value = entry ? (entry.OvenTemp ?? '') : '';
+    document.getElementById('bakeLogBakeMinutes').value = entry ? (entry.BakeMinutes ?? '') : '';
+    document.getElementById('bakeLogSteamMethod').value = entry ? (entry.SteamMethod || '') : '';
+    document.getElementById('bakeLogPhotoURL').value = entry ? (entry.PhotoURL || '') : '';
+    document.getElementById('bakeLogRating').value = entry ? (entry.Rating ?? '') : '';
+    document.getElementById('bakeLogComments').value = entry ? (entry.Comments || '') : '';
+
+    document.getElementById('bakeLogAgainToggle').querySelectorAll('.again-btn').forEach(b => b.classList.remove('on'));
+    if(entry && (isTrue(entry.BakeAgain) || isFalseSet(entry.BakeAgain))){
+      setAgainToggle('bakeLogAgainToggle', isTrue(entry.BakeAgain));
+    } else {
+      delete againState['bakeLogAgainToggle'];
+    }
+    document.getElementById('bakeLogOverlay').classList.add('open');
+  }
+
+  async function saveBakeLog(){
+    const originalId = document.getElementById('bakeLogOriginalID').value;
+    const date = document.getElementById('bakeLogDate').value;
+    if(!date){ toast('Pick a date baked.', true); return; }
+    if(date > todayStr()){ toast('Bake date can\'t be in the future.', true); return; }
+    if(date < MIN_DATE){ toast('Bake date can\'t be before Jan 2026.', true); return; }
+    const rating = validateRating(document.getElementById('bakeLogRating').value);
+    if(rating === false) return;
+    const again = 'bakeLogAgainToggle' in againState ? againState['bakeLogAgainToggle'] : null;
+
+    const payload = {
+      DateBaked: date,
+      FermentHours: document.getElementById('bakeLogFermentHours').value || null,
+      FermentTemp: document.getElementById('bakeLogFermentTemp').value || null,
+      StarterNotes: document.getElementById('bakeLogStarterNotes').value.trim(),
+      OvenTemp: document.getElementById('bakeLogOvenTemp').value || null,
+      BakeMinutes: document.getElementById('bakeLogBakeMinutes').value || null,
+      SteamMethod: document.getElementById('bakeLogSteamMethod').value.trim(),
+      PhotoURL: document.getElementById('bakeLogPhotoURL').value.trim(),
+      Rating: rating ?? 0,
+      Comments: document.getElementById('bakeLogComments').value.trim(),
+      BakeAgain: again
+    };
+
+    let error;
+    if(originalId){
+      ({error} = await sb.from(T_SD_BAKE).update(payload).eq('BakeID', originalId));
+    } else {
+      payload.RecipeID = currentBakeRecipeID;
+      ({error} = await sb.from(T_SD_BAKE).insert(payload));
+    }
+    if(error){ toast('Could not save: ' + error.message, true); return; }
+    closeModal('bakeLogOverlay');
+    toast(originalId ? 'Updated!' : 'Logged!');
+    await loadAll();
+    showBakeDetail(currentBakeRecipeID);
+  }
+
+  async function deleteBakeLog(bakeId){
+    if(!confirm('Remove this bake log entry?')) return;
+    const {error} = await sb.from(T_SD_BAKE).delete().eq('BakeID', bakeId);
+    if(error){ toast('Could not delete: ' + error.message, true); return; }
+    await loadAll();
+    showBakeDetail(currentBakeRecipeID);
   }
 
   // ---------------- Helpers ----------------
