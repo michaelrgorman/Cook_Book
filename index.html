@@ -658,12 +658,19 @@
     document.getElementById('searchInput').focus();
   }
 
-  function switchTab(tab){
+  async function switchTab(tab, refreshData = true){
     currentTab = tab;
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.getElementById('page-'+tab).classList.add('active');
     document.querySelectorAll('.navbtn').forEach(b => b.classList.remove('active'));
     document.getElementById('nav-'+tab).classList.add('active');
+
+    // Refresh from Supabase whenever the user changes tabs so each tab
+    // displays the latest data, including changes made outside this page.
+    if(refreshData){
+      await loadAll(false);
+    }
+
     if(tab === 'dashboard') renderDashboard();
     if(tab === 'books') renderBooksTab();
     if(tab === 'cooked') renderCookedTab();
@@ -671,7 +678,7 @@
     if(tab === 'bake') renderBakeTab();
   }
 
-  async function loadAll(){
+  async function loadAll(renderAfterLoad = true){
     const [{data:b, error:eb}, {data:r, error:er}, {data:c, error:ec}, {data:sr, error:esr}, {data:sk, error:esk}] = await Promise.all([
       sb.from(T_BOOK).select('*').order('Title', {ascending:true}),
       sb.from(T_RECIPE).select('*').order('RecipeName', {ascending:true}),
@@ -698,7 +705,9 @@
     });
     sourdoughRecipes = sr || [];
     sourdoughBakes = (sk || []).slice().sort((a,z) => String(z.DateBaked).localeCompare(String(a.DateBaked)));
-    switchTab(currentTab);
+    if(renderAfterLoad){
+      await switchTab(currentTab, false);
+    }
   }
 
   function bookById(isbn){ return books.find(b => String(b.ISBN) === String(isbn)); }
