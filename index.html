@@ -658,19 +658,12 @@
     document.getElementById('searchInput').focus();
   }
 
-  async function switchTab(tab, refreshData = true){
+  function switchTab(tab){
     currentTab = tab;
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.getElementById('page-'+tab).classList.add('active');
     document.querySelectorAll('.navbtn').forEach(b => b.classList.remove('active'));
     document.getElementById('nav-'+tab).classList.add('active');
-
-    // Refresh from Supabase whenever the user changes tabs so each tab
-    // displays the latest data, including changes made outside this page.
-    if(refreshData){
-      await loadAll(false);
-    }
-
     if(tab === 'dashboard') renderDashboard();
     if(tab === 'books') renderBooksTab();
     if(tab === 'cooked') renderCookedTab();
@@ -678,7 +671,7 @@
     if(tab === 'bake') renderBakeTab();
   }
 
-  async function loadAll(renderAfterLoad = true){
+  async function loadAll(){
     const [{data:b, error:eb}, {data:r, error:er}, {data:c, error:ec}, {data:sr, error:esr}, {data:sk, error:esk}] = await Promise.all([
       sb.from(T_BOOK).select('*').order('Title', {ascending:true}),
       sb.from(T_RECIPE).select('*').order('RecipeName', {ascending:true}),
@@ -705,9 +698,7 @@
     });
     sourdoughRecipes = sr || [];
     sourdoughBakes = (sk || []).slice().sort((a,z) => String(z.DateBaked).localeCompare(String(a.DateBaked)));
-    if(renderAfterLoad){
-      await switchTab(currentTab, false);
-    }
+    switchTab(currentTab);
   }
 
   function bookById(isbn){ return books.find(b => String(b.ISBN) === String(isbn)); }
@@ -1384,36 +1375,28 @@
   // not the other way around. Total Flour / Overall Hydration are read-only results.
   function computeFormula(params){
     const salt = Number(params.salt) || 0;
-    const levainFlour = Number(params.levainFlour) || 0;
-    const levainHydration = Number(params.levainHydration) || 0;
+    const levainWhite = Number(params.levainWhite) || 0;
+    const levainWholemeal = Number(params.levainWholemeal) || 0;
+    const levainWater = Number(params.levainWater) || 0;
+    const starterGrams = Number(params.starterGrams) || 0;
     const doughWater = Number(params.doughWater) || 0;
-    const autolysePct = Number(params.autolysePct) || 0;
 
-    const starterWhite = Number(params.starterWhite) || 0;
-    const starterWholemeal = Number(params.starterWholemeal) || 0;
-    const starterWater = Number(params.starterWater) || 0;
-    const starterTotal = starterWhite + starterWholemeal + starterWater;
-    const starterHydration = (starterWhite + starterWholemeal) > 0 ? (starterWater / (starterWhite+starterWholemeal)) * 100 : 0;
-
-    const levainWater = levainFlour * (levainHydration/100);
-    const levainTotal = levainFlour + levainWater + starterTotal;
+    const levainFlour = levainWhite + levainWholemeal;
+    const levainTotal = levainFlour + levainWater + starterGrams;
 
     const flourBreakdown = (params.flourTypes||[]).map(f => ({ type: f.type, grams: Number(f.grams)||0 }));
     const mainFlour = flourBreakdown.reduce((s,f)=>s+f.grams, 0);
 
-    // Totals — the read-only headline numbers — are the SUM of every bit of flour/water actually used
-    const totalFlour = starterWhite + starterWholemeal + levainFlour + mainFlour;
-    const totalWater = starterWater + levainWater + doughWater;
+    // Totals — the read-only headline numbers — are the SUM of every bit of flour/water actually used.
+    // The starter itself is treated as an opaque mass (its own internal flour/water isn't tracked here),
+    // so it counts toward Total Dough Weight but not toward Total Flour / Total Water.
+    const totalFlour = levainFlour + mainFlour;
+    const totalWater = levainWater + doughWater;
     const hydration = totalFlour > 0 ? (totalWater / totalFlour) * 100 : 0;
-
-    const autolyseFlour = mainFlour * (autolysePct/100);
-    const autolyseWater = doughWater * (autolysePct/100);
-    const finalMixFlour = mainFlour - autolyseFlour;
-    const finalMixWater = doughWater - autolyseWater;
 
     const saltGrams = totalFlour * (salt/100);
     const extrasTotal = (params.extras||[]).reduce((s,e)=>s+(Number(e.grams)||0), 0);
-    const totalDoughWeight = totalFlour + totalWater + saltGrams + extrasTotal;
+    const totalDoughWeight = totalFlour + totalWater + saltGrams + starterGrams + extrasTotal;
 
     const flourBreakdownWithPct = flourBreakdown.map(f => ({
       ...f, pct: totalFlour > 0 ? (f.grams/totalFlour*100) : 0
@@ -1421,10 +1404,8 @@
 
     return {
       totalFlour, hydration, salt, totalWater, saltGrams,
-      starterWhite, starterWholemeal, starterWater, starterTotal, starterHydration,
-      levainFlour, levainWater, levainTotal,
-      autolyseFlour, autolyseWater, autolysePct, doughWater,
-      finalMixFlour, finalMixWater,
+      levainWhite, levainWholemeal, levainWater, starterGrams, levainFlour, levainTotal,
+      doughWater, mainFlour,
       extrasTotal, totalDoughWeight, flourBreakdown: flourBreakdownWithPct
     };
   }
@@ -1432,13 +1413,11 @@
   function readCalcForm(){
     return {
       salt: document.getElementById('calcSalt').value,
-      starterWhite: document.getElementById('calcStarterWhite').value,
-      starterWholemeal: document.getElementById('calcStarterWholemeal').value,
-      starterWater: document.getElementById('calcStarterWater').value,
-      levainFlour: document.getElementById('calcLevainFlourGrams').value,
-      levainHydration: document.getElementById('calcLevainHydration').value,
-      doughWater: document.getElementById('calcDoughWater').value,
-      autolysePct: document.getElementById('calcAutolysePct').value,
+      levainWhite: document.getElementById('calcLevainWhite').value,
+      levainWholemeal: document.getElementById('calcLevainWholemeal').value,
+      levainWater: document.getElementById('calcLevainWater').value,
+      starterGrams: document.getElementById('calcLevainStarter').value,
+      doughWater: document.getElementById('calcAutolyseWater').value,
       flourTypes: flourTypeRows,
       extras: extrasRows
     };
@@ -1446,31 +1425,9 @@
 
   function renderCalcOutput(){
     const f = computeFormula(readCalcForm());
-    const wrap = document.getElementById('calcOutput');
-
     document.getElementById('calcTotalFlourOut').textContent = f.totalFlour.toFixed(0);
     document.getElementById('calcHydrationOut').textContent = f.hydration.toFixed(1);
-
-    wrap.innerHTML = `
-      ${f.flourBreakdown.map(fb => `<div class="calc-out-row"><span>${escapeHtml(fb.type)} flour (${fb.pct.toFixed(0)}%)</span><span class="val">${fb.grams.toFixed(0)}g</span></div>`).join('')}
-      <div class="calc-out-row"><span>Total water</span><span class="val">${f.totalWater.toFixed(0)}g</span></div>
-      <div class="calc-out-row"><span>Starter — white flour</span><span class="val">${f.starterWhite.toFixed(0)}g</span></div>
-      <div class="calc-out-row"><span>Starter — wholemeal flour</span><span class="val">${f.starterWholemeal.toFixed(0)}g</span></div>
-      <div class="calc-out-row"><span>Starter — water</span><span class="val">${f.starterWater.toFixed(0)}g</span></div>
-      <div class="calc-out-row"><span>Starter total (${f.starterHydration.toFixed(0)}% hydration)</span><span class="val">${f.starterTotal.toFixed(0)}g</span></div>
-      <div class="calc-out-row"><span>Levain — added flour</span><span class="val">${f.levainFlour.toFixed(0)}g</span></div>
-      <div class="calc-out-row"><span>Levain — added water</span><span class="val">${f.levainWater.toFixed(0)}g</span></div>
-      <div class="calc-out-row"><span>Levain total (incl. starter seed)</span><span class="val">${f.levainTotal.toFixed(0)}g</span></div>
-      ${f.autolysePct > 0 ? `
-        <div class="calc-out-row"><span>Autolyse flour</span><span class="val">${f.autolyseFlour.toFixed(0)}g</span></div>
-        <div class="calc-out-row"><span>Autolyse water</span><span class="val">${f.autolyseWater.toFixed(0)}g</span></div>
-      ` : ''}
-      <div class="calc-out-row"><span>Salt (${f.salt}% of total flour) — mixed in at the autolyse</span><span class="val">${f.saltGrams.toFixed(0)}g</span></div>
-      <div class="calc-out-row"><span>Final mix — flour</span><span class="val">${f.finalMixFlour.toFixed(0)}g</span></div>
-      <div class="calc-out-row"><span>Final mix — water</span><span class="val">${f.finalMixWater.toFixed(0)}g</span></div>
-      ${f.extrasTotal > 0 ? `<div class="calc-out-row"><span>Extras</span><span class="val">${f.extrasTotal.toFixed(0)}g</span></div>` : ''}
-      <div class="calc-out-total"><span>Total dough weight</span><span>${f.totalDoughWeight.toFixed(0)}g</span></div>
-    `;
+    document.getElementById('calcDoughWeightOut').textContent = f.totalDoughWeight.toFixed(0) + 'g';
   }
 
   async function saveSourdoughRecipe(){
@@ -1483,13 +1440,11 @@
       TotalFlour: f.totalFlour,
       HydrationPct: f.hydration,
       SaltPct: Number(form.salt)||0,
-      LevainFlourGrams: Number(form.levainFlour)||0,
-      LevainHydrationPct: Number(form.levainHydration)||0,
+      LevainWhiteFlour: Number(form.levainWhite)||0,
+      LevainWholemealFlour: Number(form.levainWholemeal)||0,
+      LevainWater: Number(form.levainWater)||0,
+      StarterGrams: Number(form.starterGrams)||0,
       DoughWater: Number(form.doughWater)||0,
-      StarterWhiteFlour: Number(form.starterWhite)||0,
-      StarterWholemealFlour: Number(form.starterWholemeal)||0,
-      StarterWater: Number(form.starterWater)||0,
-      AutolysePct: Number(form.autolysePct)||0,
       FlourTypes: form.flourTypes,
       Extras: form.extras
     });
@@ -1532,19 +1487,22 @@
 
     const f = computeFormula({
       salt: r.SaltPct,
-      levainFlour: r.LevainFlourGrams, levainHydration: r.LevainHydrationPct,
+      levainWhite: r.LevainWhiteFlour, levainWholemeal: r.LevainWholemealFlour, levainWater: r.LevainWater,
+      starterGrams: r.StarterGrams,
       doughWater: r.DoughWater,
-      starterWhite: r.StarterWhiteFlour, starterWholemeal: r.StarterWholemealFlour, starterWater: r.StarterWater,
-      autolysePct: r.AutolysePct, flourTypes: r.FlourTypes || [], extras: r.Extras || []
+      flourTypes: r.FlourTypes || [], extras: r.Extras || []
     });
     document.getElementById('bakeDetailFormula').innerHTML = `
       <div class="calc-out-row"><span>Total flour</span><span class="val">${f.totalFlour.toFixed(0)}g</span></div>
       <div class="calc-out-row"><span>Overall hydration</span><span class="val">${f.hydration.toFixed(1)}%</span></div>
-      ${f.flourBreakdown.map(fb => `<div class="calc-out-row"><span>${escapeHtml(fb.type)} flour</span><span class="val">${fb.grams.toFixed(0)}g</span></div>`).join('')}
-      <div class="calc-out-row"><span>Water</span><span class="val">${f.totalWater.toFixed(0)}g</span></div>
-      <div class="calc-out-row"><span>Starter (${f.starterHydration.toFixed(0)}% hydration)</span><span class="val">${f.starterTotal.toFixed(0)}g</span></div>
-      <div class="calc-out-row"><span>Salt</span><span class="val">${f.saltGrams.toFixed(0)}g</span></div>
+      <div class="calc-out-row"><span>Levain — white flour</span><span class="val">${f.levainWhite.toFixed(0)}g</span></div>
+      <div class="calc-out-row"><span>Levain — wholemeal flour</span><span class="val">${f.levainWholemeal.toFixed(0)}g</span></div>
+      <div class="calc-out-row"><span>Levain — water</span><span class="val">${f.levainWater.toFixed(0)}g</span></div>
+      <div class="calc-out-row"><span>Levain — starter</span><span class="val">${f.starterGrams.toFixed(0)}g</span></div>
       <div class="calc-out-row"><span>Levain total</span><span class="val">${f.levainTotal.toFixed(0)}g</span></div>
+      <div class="calc-out-row"><span>Autolyse — water</span><span class="val">${f.doughWater.toFixed(0)}g</span></div>
+      ${f.flourBreakdown.map(fb => `<div class="calc-out-row"><span>Autolyse — ${escapeHtml(fb.type)} flour</span><span class="val">${fb.grams.toFixed(0)}g</span></div>`).join('')}
+      <div class="calc-out-row"><span>Salt</span><span class="val">${f.saltGrams.toFixed(0)}g</span></div>
       ${f.extrasTotal > 0 ? `<div class="calc-out-row"><span>Extras</span><span class="val">${f.extrasTotal.toFixed(0)}g</span></div>` : ''}
       <div class="calc-out-total"><span>Total dough weight</span><span>${f.totalDoughWeight.toFixed(0)}g</span></div>
     `;
