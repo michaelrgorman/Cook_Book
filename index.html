@@ -1443,8 +1443,8 @@
       LevainWhiteFlour: Number(form.levainWhite)||0,
       LevainWholemealFlour: Number(form.levainWholemeal)||0,
       LevainWater: Number(form.levainWater)||0,
-      StarterGrams: Number(form.starterGrams)||0,
-      DoughWater: Number(form.doughWater)||0,
+      LevainStarter: Number(form.starterGrams)||0,
+      AutolyseWater: Number(form.doughWater)||0,
       FlourTypes: form.flourTypes,
       Extras: form.extras
     });
@@ -1488,8 +1488,8 @@
     const f = computeFormula({
       salt: r.SaltPct,
       levainWhite: r.LevainWhiteFlour, levainWholemeal: r.LevainWholemealFlour, levainWater: r.LevainWater,
-      starterGrams: r.StarterGrams,
-      doughWater: r.DoughWater,
+      starterGrams: r.LevainStarter,
+      doughWater: r.AutolyseWater,
       flourTypes: r.FlourTypes || [], extras: r.Extras || []
     });
     document.getElementById('bakeDetailFormula').innerHTML = `
